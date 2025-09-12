@@ -7,6 +7,7 @@ add_executable(AlgebraSolver
     src/main.cpp
     src/Lexer.cpp
     src/Token.cpp
+    src/Parser.cpp
     src/utils/Debug.cpp
 )
 

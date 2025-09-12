@@ -2,9 +2,7 @@
 #include <cctype>
 #include <stdexcept>
 
-Lexer::Lexer(const std::string& input) : input(input), pos(0) {
-    currentChar = input[pos];
-}
+Lexer::Lexer(const std::string &input) : input(input), pos(0) { currentChar = input[pos]; }
 
 Token Lexer::getNextToken() {
     while (currentChar != '\0') {
@@ -36,11 +34,19 @@ Token Lexer::getNextToken() {
             return Token(opType, std::string(1, opChar));
         }
 
-
         throw std::runtime_error(std::string("Unknown character: ") + currentChar);
     }
 
     return Token(TokenType::END, ""); // End of input token
+}
+
+Token Lexer::peekNextToken() {
+    size_t savedPos = pos;
+    char savedChar = currentChar;
+    Token nextToken = getNextToken();
+    pos = savedPos;
+    currentChar = savedChar;
+    return nextToken;
 }
 
 void Lexer::advance() {
@@ -69,11 +75,8 @@ Token Lexer::number() {
 
 Token Lexer::variable() {
     std::string result;
-    while (currentChar != '\0' 
-        && !Token::isOperation(currentChar)
-        && !std::isspace(currentChar)
-        && !(currentChar == '(' || currentChar == ')')
-    ) {
+    while (currentChar != '\0' && !Token::isOperation(currentChar) && !std::isspace(currentChar) &&
+           !(currentChar == '(' || currentChar == ')')) {
         result += currentChar;
         advance();
     }
