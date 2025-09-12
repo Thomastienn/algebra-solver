@@ -6,13 +6,13 @@ std::ostream& operator<<(std::ostream& os, const Token& token) {
         case VARIABLE: os << "VARIABLE"; break;
         case LPARAN: os << "LPARAN"; break;
         case RPARAN: os << "RPARAN"; break;
-        case ADD: os << "ADD"; break;
-        case SUBTRACT: os << "SUBTRACT"; break;
+        case ASSIGN: os << "ASSIGN"; break;
+        case PLUS: os << "PLUS"; break;
+        case MINUS: os << "MINUS"; break;
         case MULTIPLY: os << "MULTIPLY"; break;
         case DIVIDE: os << "DIVIDE"; break;
         case MODULO: os << "MODULO"; break;
         case POWER: os << "POWER"; break;
-        case NEGATE: os << "NEGATE"; break;
         case UNKNOWN: os << "UNKNOWN"; break;
         default: throw std::runtime_error("Token doesn't supported"); break;
     }
@@ -21,16 +21,43 @@ std::ostream& operator<<(std::ostream& os, const Token& token) {
 }
 
 TokenType Token::chrToOperation(const char& op) {
-    if (op == '+') return ADD;
-    if (op == '-') return SUBTRACT;
-    if (op == '*') return MULTIPLY;
-    if (op == '/') return DIVIDE;
-    if (op == '%') return MODULO;
-    if (op == '^') return POWER;
-    return UNKNOWN;
+    switch(op) {
+        case '=': return ASSIGN;
+        case '+': return PLUS;
+        case '-': return MINUS;
+        case '*': return MULTIPLY;
+        case '/': return DIVIDE;
+        case '%': return MODULO;
+        case '^': return POWER;
+        default: return UNKNOWN;
+    }
 }
 
 bool Token::isOperation(const char& chr) {
     return Token::chrToOperation(chr) != UNKNOWN;
+}
+bool Token::isOperation(const TokenType& type) {
+    switch(type) {
+        case ASSIGN:
+        case PLUS:
+        case MINUS:
+        case MULTIPLY:
+        case DIVIDE:
+        case MODULO:
+        case POWER:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Token::isUnaryOperation(const TokenType& type) {
+    switch(type) {
+        case PLUS:
+        case MINUS:
+            return true;
+        default:
+            return false;
+    }
 }
 

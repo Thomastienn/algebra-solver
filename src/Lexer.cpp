@@ -72,6 +72,7 @@ Token Lexer::variable() {
     while (currentChar != '\0' 
         && !Token::isOperation(currentChar)
         && !std::isspace(currentChar)
+        && !(currentChar == '(' || currentChar == ')')
     ) {
         result += currentChar;
         advance();
