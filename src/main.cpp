@@ -1,4 +1,4 @@
-#include "Parser.h"
+#include "Evaluation.h"
 #include <iostream>
 #include <string>
 
@@ -46,8 +46,33 @@ void testParser() {
     delete root;
 }
 
-int main(int argc, char *argv[]) {
-    testParser();
-    // testLexer();
+void testIsAssignment(){
+    std::string sample = "3 + 2 * (1 - 5)";
+    Lexer lexer(sample);
+    Parser parser(&lexer);
+    ASTNode *root = parser.parse();
+    std::cout << *root << "\n";
+    std::cout << "Is assignment: " << (parser.isAssignment(root) ? "true" : "false") << "\n";
+    delete root;
+}
+
+void testEvaluation() {
+    Evaluation eval;
+    std::string expr1 = "x = 10";
+    std::string expr2 = "3 + x * (1 - 2)";
+    Parser parser1(new Lexer(expr1));
+    ASTNode *root1 = parser1.parse();
+    parser1.setLexer(new Lexer(expr2));
+    ASTNode *root2 = parser1.parse();
+
+    eval.assignment(root1);
+    double result = eval.evaluate(root2);
+    std::cout << expr1 << "\n";
+    std::cout << expr2 << " = " << result << "\n";
+}
+    
+
+int main (int argc, char *argv[]) {
+    testEvaluation();
     return 0;
 }

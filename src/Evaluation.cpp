@@ -1,0 +1,92 @@
+#include "Evaluation.h"
+#include <cmath>
+
+void Evaluation::reset() {
+    Evaluation::variables.clear();
+}
+
+double Evaluation::evaluate(ASTNode* node) {
+    if (node == nullptr) {
+        throw std::runtime_error("Null node in evaluation");
+    }
+    switch(node->getNodeType()) {
+        case NodeType::Atom: {
+            Token token = node->getToken();
+            if (token.getType() == TokenType::NUMBER) {
+                return std::stod(token.getValue());
+            } else if (token.getType() == TokenType::VARIABLE) {
+                auto it = Evaluation::variables.find(token.getValue());
+                if (it != variables.end()) {
+                    return it->second;
+                } else {
+                    throw std::runtime_error("Undefined variable: " + token.getValue());
+                }
+            } else {
+                throw std::runtime_error("Invalid atom token");
+            }
+        }
+        case NodeType::BinaryOp: {
+            BinaryOpNode* binNode = dynamic_cast<BinaryOpNode*>(node);
+            if (!binNode) {
+                throw std::runtime_error("Invalid binary operation node");
+            }
+            double leftVal = Evaluation::evaluate(binNode->getLeft());
+            double rightVal = Evaluation::evaluate(binNode->getRight());
+            Token opToken = binNode->getToken();
+            switch (opToken.getType()) {
+                case TokenType::PLUS: return leftVal + rightVal;
+                case TokenType::MINUS: return leftVal - rightVal;
+                case TokenType::MULTIPLY: return leftVal * rightVal;
+                case TokenType::DIVIDE:
+                    if (rightVal == 0) {
+                        throw std::runtime_error("Division by zero");
+                    }
+                    return leftVal / rightVal;
+                case TokenType::POWER: return std::pow(leftVal, rightVal);
+                default:
+                    throw std::runtime_error("Unsupported binary operator");
+            }
+        }
+        case NodeType::UnaryOp: {
+            UnaryOpNode* unNode = dynamic_cast<UnaryOpNode*>(node);
+            if (!unNode) {
+                throw std::runtime_error("Invalid unary operation node");
+            }
+            double operandVal = Evaluation::evaluate(unNode->getOperand());
+            Token opToken = unNode->getToken();
+            switch (opToken.getType()) {
+                case TokenType::PLUS: return operandVal;
+                case TokenType::MINUS: return -operandVal;
+                default:
+                    throw std::runtime_error("Unsupported unary operator");
+            }
+        }
+        default:
+            throw std::runtime_error("Unknown node type");
+    }
+}
+
+
+void Evaluation::assignment(ASTNode* node) {
+    // Assignment needs to be a binary operation node
+    if (node == nullptr || node->getNodeType() != NodeType::BinaryOp) {
+        throw std::runtime_error("Invalid assignment node");
+    }
+    
+    // Assignment always at the top of tree
+    BinaryOpNode* binNode = dynamic_cast<BinaryOpNode*>(node);
+    if (!binNode || binNode->getToken().getType() != TokenType::ASSIGN) {
+        throw std::runtime_error("Invalid assignment operation");
+    }
+
+    ASTNode* leftNode = binNode->getLeft();
+    ASTNode* rightNode = binNode->getRight();
+
+    if (leftNode->getNodeType() != NodeType::Atom || leftNode->getToken().getType() != TokenType::VARIABLE) {
+        throw std::runtime_error("Left side of assignment must be a variable");
+    }
+
+    std::string varName = leftNode->getToken().getValue();
+    double value = Evaluation::evaluate(rightNode);
+    Evaluation::variables[varName] = value;
+}

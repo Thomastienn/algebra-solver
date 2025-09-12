@@ -43,6 +43,6 @@ ASTNode *Parser::parse(float cur_bp) {
         left = new BinaryOpNode(token, left, right);
     }
 
-    Parser::setLastParse(left);
     return left;
 }
+
