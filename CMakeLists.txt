@@ -9,6 +9,7 @@ add_executable(AlgebraSolver
     src/Token.cpp
     src/Parser.cpp
     src/Evaluation.cpp
+    src/EquationSolver.cpp
     src/utils/Math.cpp
     src/utils/Debug.cpp
 )
