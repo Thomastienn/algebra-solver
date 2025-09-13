@@ -30,10 +30,12 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const Token &token);
 
     bool operator==(const TokenType &other) const { return this->getType() == other; }
+    bool operator!=(const TokenType &other) const { return this->getType() != other; }
 
     TokenType getType() const { return type; }
     const std::string &getValue() const { return value; }
 
+    static char operationToChr(const TokenType &op);
     static TokenType chrToOperation(const char &op);
 
     static bool isOperation(const char &chr);

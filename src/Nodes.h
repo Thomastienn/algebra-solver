@@ -19,6 +19,9 @@ public:
 
     Token getToken() const { return token; }
     NodeType getNodeType() const { return type; }
+
+    void setToken(const Token& newToken) { token = newToken; }
+    void setType(const NodeType& newType) { type = newType; }
 };
 
 class AtomNode : public ASTNode {
@@ -61,6 +64,10 @@ public:
     ~UnaryOpNode() { delete operand; }
 
     ASTNode *getOperand() const { return operand; }
+    void setOperand(ASTNode* newOperand) {
+        delete operand;
+        operand = newOperand;
+    }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const ASTNode &node) {

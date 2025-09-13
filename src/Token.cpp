@@ -21,6 +21,20 @@ std::ostream& operator<<(std::ostream& os, const Token& token) {
     return os;
 }
 
+char Token::operationToChr(const TokenType& op) {
+    switch(op) {
+        case ASSIGN: return '=';
+        case PLUS: return '+';
+        case MINUS: return '-';
+        case MULTIPLY: return '*';
+        case DIVIDE: return '/';
+        case MODULO: return '%';
+        case POWER: return '^';
+        case UNKNOWN: return '?';
+        default: throw std::runtime_error("Token doesn't supported");
+    }
+}
+
 TokenType Token::chrToOperation(const char& op) {
     switch(op) {
         case '=': return ASSIGN;
