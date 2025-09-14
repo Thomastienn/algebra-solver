@@ -11,14 +11,10 @@ TokenType EquationSolver::mergeUnaryToken(const TokenType &unary1, const TokenTy
 }
 
 void EquationSolver::reducePlusUnary(ASTNode*& node) {
-    std::cout << "Reducing: " << *node << std::endl;
     if (node->getNodeType() == NodeType::Atom) return;
     if (node->getNodeType() == NodeType::UnaryOp) {
-        std::cout << "At UnaryOp: " << *node << std::endl;
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node);
-        std::cout << "Token: " << unaryNode->getToken().getType() << std::endl;
         if (unaryNode->getToken().getType() == TokenType::PLUS) {
-            std::cout << "Reducing +: " << *node << std::endl;
             ASTNode *operand = unaryNode->getOperand();
 
             // Replace unaryNode with its operand
@@ -27,10 +23,8 @@ void EquationSolver::reducePlusUnary(ASTNode*& node) {
             unaryNode = nullptr;
             node = operand;
 
-            std::cout << *node << std::endl;
             reducePlusUnary(node);
         } else {
-            std::cout << "Reducing -: " << *node << std::endl;
             reducePlusUnary(unaryNode->getOperandRef());
         }
         return;

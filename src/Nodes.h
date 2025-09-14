@@ -70,7 +70,6 @@ public:
     ASTNode *& getOperandRef() { return operand; }
     
     void setOperand(ASTNode* newOperand) {
-        delete operand;
         operand = newOperand;
     }
 };
