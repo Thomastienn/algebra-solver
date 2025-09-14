@@ -23,11 +23,17 @@ public:
 
     void setToken(const Token& newToken) { token = newToken; }
     void setType(const NodeType& newType) { type = newType; }
+
+    virtual std::string toString() = 0;
 };
 
 class AtomNode : public ASTNode {
 public:
     AtomNode(Token token) : ASTNode(token, NodeType::Atom) {}
+
+    std::string toString() override {
+        return getToken().getValue();
+    }
 };
 
 class BinaryOpNode : public ASTNode {
@@ -46,8 +52,21 @@ public:
     ASTNode *getLeft() const { return left.get(); }
     ASTNode *getRight() const { return right.get(); }
 
+    void setLeft(std::unique_ptr<ASTNode> newLeft) {
+        left = std::move(newLeft);
+    }
+    void setRight(std::unique_ptr<ASTNode> newRight) {
+        right = std::move(newRight);
+    }
+
     std::unique_ptr<ASTNode>& getLeftRef() { return left; }
     std::unique_ptr<ASTNode>& getRightRef() { return right; }
+
+    std::string toString() override {
+        return "(" + left->toString() + 
+                " " + getToken().getValue() + " " + 
+                right->toString() + ")";
+    }
 };
 
 class UnaryOpNode : public ASTNode {
@@ -67,6 +86,10 @@ public:
     
     void setOperand(std::unique_ptr<ASTNode> newOperand) {
         operand = std::move(newOperand);
+    }
+
+    std::string toString() override {
+        return getToken().getValue() + operand->toString();
     }
 };
 

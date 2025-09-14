@@ -1,5 +1,5 @@
 #include "EquationSolver.h"
-#include <iostream>
+#include <cassert>
 
 void EquationSolver::addEquation(std::unique_ptr<ASTNode> equation) { 
     equations.push_back(std::move(equation)); 
@@ -12,69 +12,128 @@ TokenType EquationSolver::mergeUnaryToken(const TokenType &unary1, const TokenTy
     return (numMinus % 2 == 0) ? TokenType::PLUS : TokenType::MINUS;
 }
 
-void EquationSolver::reducePlusUnary(std::unique_ptr<ASTNode>& node) {
-    if (node->getNodeType() == NodeType::Atom) return;
+bool EquationSolver::eliminateDoubleNegatives(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    }
     if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        if (unaryNode->getToken().getType() == TokenType::PLUS) {
-            // Replace unaryNode with its operand
-            auto operand = std::move(unaryNode->getOperandRef());
-            node = std::move(operand);
-
-            reducePlusUnary(node);
-        } else {
-            reducePlusUnary(unaryNode->getOperandRef());
+        if (unaryNode->getToken() == TokenType::MINUS) {
+            ASTNode *child = unaryNode->getOperand();
+            if (child->getNodeType() == NodeType::UnaryOp) {
+                UnaryOpNode *childUnary = static_cast<UnaryOpNode *>(child);
+                if (childUnary->getToken() == TokenType::MINUS) {
+                    // Replace --x with x
+                    node = std::move(childUnary->getOperandRef());
+                    return true;
+                }
+            }
         }
-        return;
+        return eliminateDoubleNegatives(unaryNode->getOperandRef());
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        bool leftChanged = eliminateDoubleNegatives(binaryNode->getLeftRef());
+        bool rightChanged = eliminateDoubleNegatives(binaryNode->getRightRef());
+        return leftChanged || rightChanged;
+    }
+    return false;
+}
+
+bool EquationSolver::distributeMinusUnaryInBinary(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    }
+    if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        if (unaryNode->getToken() == TokenType::MINUS) {
+            ASTNode *child = unaryNode->getOperand();
+            if (child->getNodeType() == NodeType::BinaryOp) {
+                BinaryOpNode *childBinary = static_cast<BinaryOpNode *>(child);
+                // Distribute the minus to both sides of the binary operation
+                Token plusToken(TokenType::PLUS, "+");
+                Token minusToken(TokenType::MINUS, "-");
+
+                auto newLeft = std::make_unique<UnaryOpNode>(minusToken, std::move(childBinary->getLeftRef()));
+                auto newRight = std::make_unique<UnaryOpNode>(minusToken, std::move(childBinary->getRightRef()));
+                node = std::make_unique<BinaryOpNode>(plusToken, std::move(newLeft), std::move(newRight));
+                return true;
+            }
+        }
+        return distributeMinusUnaryInBinary(unaryNode->getOperandRef());
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        bool leftChanged = distributeMinusUnaryInBinary(binaryNode->getLeftRef());
+        bool rightChanged = distributeMinusUnaryInBinary(binaryNode->getRightRef());
+        return leftChanged || rightChanged;
+    }
+    return false;
+}
+
+bool EquationSolver::removePlusUnary(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    }
+    if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        if (unaryNode->getToken() == TokenType::PLUS) {
+            // Replace +x with x
+            node = std::move(unaryNode->getOperandRef());
+            return true;
+        }
+        return removePlusUnary(unaryNode->getOperandRef());
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        bool leftChanged = removePlusUnary(binaryNode->getLeftRef());
+        bool rightChanged = removePlusUnary(binaryNode->getRightRef());
+        return leftChanged || rightChanged;
+    }
+    return false;
+}
+
+bool EquationSolver::mergeBinaryWithRightUnary(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
     }
     if (node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
-
-        reducePlusUnary(binaryNode->getLeftRef());
-        reducePlusUnary(binaryNode->getRightRef());
-        return;
+        ASTNode *right = binaryNode->getRight();
+        if (right->getNodeType() == NodeType::UnaryOp) {
+            UnaryOpNode *rightUnary = static_cast<UnaryOpNode *>(right);
+            TokenType mergedTokenType = 
+                EquationSolver::mergeUnaryToken(
+                    binaryNode->getToken().getType(),
+                    rightUnary->getToken().getType()
+                );
+            // Create new binary node with merged operation and left operand unchanged
+            node = std::make_unique<BinaryOpNode>(
+                Token(
+                    mergedTokenType, 
+                    std::string(1, Token::operationToChr(mergedTokenType))
+                ), 
+                std::move(binaryNode->getLeftRef()), 
+                std::move(rightUnary->getOperandRef())
+            );
+            return true;
+        }
+        bool leftChanged = mergeBinaryWithRightUnary(binaryNode->getLeftRef());
+        bool rightChanged = mergeBinaryWithRightUnary(binaryNode->getRightRef());
+        return leftChanged || rightChanged;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return mergeBinaryWithRightUnary(unaryNode->getOperandRef());
     }
-    throw std::runtime_error("Unknown node type in reducePlusUnary");
+    return false;
 }
 
-// Merge AST node like this: +(-x) -> -x or -(-x) -> +x
-void EquationSolver::mergeUnaryIntoBinary(std::unique_ptr<ASTNode>& node) {
-    if (node->getNodeType() == NodeType::Atom){}
-    else if (node->getNodeType() == NodeType::UnaryOp) {
-        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        ASTNode *operand = unaryNode->getOperand();
-
-        // +(-x)
-        if (operand->getNodeType() == NodeType::UnaryOp) {
-            UnaryOpNode *innerUnary = static_cast<UnaryOpNode *>(operand);
-            TokenType mergedToken = EquationSolver::mergeUnaryToken(
-                unaryNode->getToken().getType(),
-                innerUnary->getToken().getType()
-            );
-
-            unaryNode->setToken(
-                Token(
-                    mergedToken, 
-                    std::to_string(Token::operationToChr(mergedToken))
-                )
-            );
-            auto innerOperand = std::move(innerUnary->getOperandRef());
-            unaryNode->setOperand(std::move(innerOperand));
-            mergeUnaryIntoBinary(node);
-        } 
-        // -(-x+2)
-        else if (operand->getNodeType() == NodeType::BinaryOp) {
-            BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(operand);
-        }
-    } else if(node->getNodeType() == NodeType::BinaryOp) {
-        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
-        // TODO
-        
-    } else {
-        throw std::runtime_error("Unknown node type in mergeUnaryIntoBinary");
-    }
-
-    EquationSolver::reducePlusUnary(node);
+void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
+    bool changed;
+    do {
+        changed = false;
+        changed |= EquationSolver::eliminateDoubleNegatives(node);
+        changed |= EquationSolver::distributeMinusUnaryInBinary(node);
+        changed |= EquationSolver::removePlusUnary(node);
+        changed |= EquationSolver::mergeBinaryWithRightUnary(node);
+    } while (changed);
 }
 
 std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNode> equation) {

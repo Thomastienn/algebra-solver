@@ -15,7 +15,7 @@ std::unique_ptr<ASTNode> Parser::parse(float cur_bp) {
         }
     } else if (Token::isUnaryOperation(token.getType())) {
         auto [left_bp, right_bp] = Token::getBindingPower(token.getType());
-        auto right = Parser::parse(right_bp);
+        std::unique_ptr<ASTNode> right = Parser::parse(right_bp);
         left = std::make_unique<UnaryOpNode>(token, std::move(right));
     } else {
         throw std::runtime_error("Unexpected token: " + token.getValue());
@@ -39,7 +39,7 @@ std::unique_ptr<ASTNode> Parser::parse(float cur_bp) {
         }
         lexer->getNextToken(); // consume the operator
 
-        auto right = parse(right_bp);
+        std::unique_ptr<ASTNode> right = parse(right_bp);
         left = std::make_unique<BinaryOpNode>(token, std::move(left), std::move(right));
     }
 

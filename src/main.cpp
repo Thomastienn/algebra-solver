@@ -77,21 +77,17 @@ void testEvaluation() {
     std::cout << expr2 << " = " << result << "\n";
 }
 
-void testReduceUnary() {
-    // std::string expr = "-(+(a-3))";
-    // std::string expr = "+(-a)";
-    std::string expr = "+(+(a-(+3)))";
+void testSimplify() {
+    std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
-    std::cout << "Before reduce: " << *root << "\n";
-
-    EquationSolver::reducePlusUnary(root);
-    std::cout << "After reduce: " << *root << "\n";
+    std::cout << "Original: " << root->toString() << "\n";
+    EquationSolver::simplify(root);
+    std::cout << "Simplified: " << root->toString() << "\n";
 }
-    
 
 int main (int argc, char *argv[]) {
-    testReduceUnary();
+    testSimplify();
     return 0;
 }
