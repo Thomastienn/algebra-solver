@@ -87,7 +87,17 @@ void testSimplify() {
     std::cout << "Simplified: " << root->toString() << "\n";
 }
 
+void testNormalize() {
+    std::string expr = "3+y = 2 - (x + 5)";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    auto normalized = EquationSolver::normalizeEquation(std::move(root));
+    std::cout << "Normalized: " << normalized->toString() << "\n";
+}
+
 int main (int argc, char *argv[]) {
-    testSimplify();
+    testNormalize();
     return 0;
 }

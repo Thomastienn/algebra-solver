@@ -1,5 +1,6 @@
 #include "EquationSolver.h"
 #include <cassert>
+#include <iostream>
 
 void EquationSolver::addEquation(std::unique_ptr<ASTNode> equation) { 
     equations.push_back(std::move(equation)); 
@@ -126,14 +127,19 @@ bool EquationSolver::mergeBinaryWithRightUnary(std::unique_ptr<ASTNode> &node) {
 }
 
 void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
+    std::cout << "Simplifying: " << node->toString() << "\n";
     bool changed;
+    int iterations = 0;
     do {
         changed = false;
         changed |= EquationSolver::eliminateDoubleNegatives(node);
         changed |= EquationSolver::distributeMinusUnaryInBinary(node);
         changed |= EquationSolver::removePlusUnary(node);
         changed |= EquationSolver::mergeBinaryWithRightUnary(node);
+        iterations++;
     } while (changed);
+    // Just benchmark info
+    std::cout << "Simplification completed in " << iterations << " iterations.\n";
 }
 
 std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNode> equation) {
@@ -142,11 +148,32 @@ std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNo
     }
 
     BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(equation.get());
+
+    auto lhs = std::move(assignNode->getLeftRef());
+    auto rhs = std::move(assignNode->getRightRef());
+
+    auto minusToken = Token(TokenType::MINUS, "-");
+    auto zeroNode = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
+
+    auto newLHS = std::make_unique<BinaryOpNode>(minusToken, std::move(lhs), std::move(rhs));
+    auto newEquation = std::make_unique<BinaryOpNode>(
+        Token(TokenType::ASSIGN, "="), 
+        std::move(newLHS), 
+        std::move(zeroNode)
+    );
+    EquationSolver::simplify(newEquation->getLeftRef());
+    return newEquation;
+}
+
+std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {
+    if (equation->getNodeType() != NodeType::BinaryOp || equation->getToken() != TokenType::ASSIGN) {
+        throw std::runtime_error("Equation must be an assignment (LHS = RHS)");
+    }
+
+    BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(equation.get());
     ASTNode *lhs = assignNode->getLeft();
     ASTNode *rhs = assignNode->getRight();
 
-    // Negate each term in RHS
-    Token minusToken(TokenType::MINUS, "-");
     // TODO
 
     return nullptr;

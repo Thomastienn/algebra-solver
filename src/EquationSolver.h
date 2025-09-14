@@ -22,8 +22,10 @@ public:
 
     // Merge AST node like this: +(-x) -> -x or -(-x) -> +x
     static void mergeUnaryIntoBinary(std::unique_ptr<ASTNode>& node);
+
     // LHS = RHS -> LHS - RHS = 0
     static std::unique_ptr<ASTNode> normalizeEquation(std::unique_ptr<ASTNode> equation);
+    static std::unique_ptr<ASTNode> isolateVariable(std::unique_ptr<ASTNode> equation, const std::string& variable);
 
     static void simplify(std::unique_ptr<ASTNode>& node);
 };
