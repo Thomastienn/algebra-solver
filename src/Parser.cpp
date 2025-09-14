@@ -1,12 +1,12 @@
 #include "Parser.h"
 
-ASTNode *Parser::parse(float cur_bp) {
-    ASTNode *left;
+std::unique_ptr<ASTNode> Parser::parse(float cur_bp) {
+    std::unique_ptr<ASTNode> left;
     Lexer *lexer = this->getLexer();
     Token token = lexer->getNextToken();
 
     if (Token::isAtom(token.getType())) {
-        left = new AtomNode(token);
+        left = std::make_unique<AtomNode>(token);
     } else if (token.getType() == TokenType::LPARAN) {
         left = Parser::parse(0);
         token = lexer->getNextToken();
@@ -15,8 +15,8 @@ ASTNode *Parser::parse(float cur_bp) {
         }
     } else if (Token::isUnaryOperation(token.getType())) {
         auto [left_bp, right_bp] = Token::getBindingPower(token.getType());
-        ASTNode *right = Parser::parse(right_bp);
-        left = new UnaryOpNode(token, right);
+        auto right = Parser::parse(right_bp);
+        left = std::make_unique<UnaryOpNode>(token, std::move(right));
     } else {
         throw std::runtime_error("Unexpected token: " + token.getValue());
     }
@@ -39,8 +39,8 @@ ASTNode *Parser::parse(float cur_bp) {
         }
         lexer->getNextToken(); // consume the operator
 
-        ASTNode *right = parse(right_bp);
-        left = new BinaryOpNode(token, left, right);
+        auto right = parse(right_bp);
+        left = std::make_unique<BinaryOpNode>(token, std::move(left), std::move(right));
     }
 
     return left;

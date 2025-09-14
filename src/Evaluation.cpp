@@ -5,7 +5,7 @@ void Evaluation::reset() {
     Evaluation::variables.clear();
 }
 
-double Evaluation::evaluate(ASTNode* node) {
+double Evaluation::evaluate(const ASTNode* node) {
     if (node == nullptr) {
         throw std::runtime_error("Null node in evaluation");
     }
@@ -26,7 +26,7 @@ double Evaluation::evaluate(ASTNode* node) {
             }
         }
         case NodeType::BinaryOp: {
-            BinaryOpNode* binNode = dynamic_cast<BinaryOpNode*>(node);
+            const BinaryOpNode* binNode = dynamic_cast<const BinaryOpNode*>(node);
             if (!binNode) {
                 throw std::runtime_error("Invalid binary operation node");
             }
@@ -48,7 +48,7 @@ double Evaluation::evaluate(ASTNode* node) {
             }
         }
         case NodeType::UnaryOp: {
-            UnaryOpNode* unNode = dynamic_cast<UnaryOpNode*>(node);
+            const UnaryOpNode* unNode = dynamic_cast<const UnaryOpNode*>(node);
             if (!unNode) {
                 throw std::runtime_error("Invalid unary operation node");
             }
@@ -67,20 +67,20 @@ double Evaluation::evaluate(ASTNode* node) {
 }
 
 
-void Evaluation::assignment(ASTNode* node) {
+void Evaluation::assignment(const ASTNode* node) {
     // Assignment needs to be a binary operation node
     if (node == nullptr || node->getNodeType() != NodeType::BinaryOp) {
         throw std::runtime_error("Invalid assignment node");
     }
     
     // Assignment always at the top of tree
-    BinaryOpNode* binNode = dynamic_cast<BinaryOpNode*>(node);
+    const BinaryOpNode* binNode = dynamic_cast<const BinaryOpNode*>(node);
     if (!binNode || binNode->getToken().getType() != TokenType::ASSIGN) {
         throw std::runtime_error("Invalid assignment operation");
     }
 
-    ASTNode* leftNode = binNode->getLeft();
-    ASTNode* rightNode = binNode->getRight();
+    const ASTNode* leftNode = binNode->getLeft();
+    const ASTNode* rightNode = binNode->getRight();
 
     if (leftNode->getNodeType() != NodeType::Atom || leftNode->getToken().getType() != TokenType::VARIABLE) {
         throw std::runtime_error("Left side of assignment must be a variable");

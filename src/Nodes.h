@@ -1,5 +1,6 @@
 #pragma once
 #include "Token.h"
+#include <memory>
 
 enum class NodeType {
     Atom,
@@ -31,46 +32,41 @@ public:
 
 class BinaryOpNode : public ASTNode {
 private:
-    ASTNode *left;
-    ASTNode *right;
+    std::unique_ptr<ASTNode> left;
+    std::unique_ptr<ASTNode> right;
 
 public:
-    BinaryOpNode(Token op, ASTNode *left, ASTNode *right) : ASTNode(op, NodeType::BinaryOp), left(left), right(right) {
+    BinaryOpNode(Token op, std::unique_ptr<ASTNode> left, std::unique_ptr<ASTNode> right) 
+        : ASTNode(op, NodeType::BinaryOp), left(std::move(left)), right(std::move(right)) {
         if (!Token::isOperation(op.getType())) {
             throw std::runtime_error("BinaryOpNode requires an operation token");
         }
     }
 
-    ~BinaryOpNode() {
-        delete left;
-        delete right;
-    }
+    ASTNode *getLeft() const { return left.get(); }
+    ASTNode *getRight() const { return right.get(); }
 
-    ASTNode *getLeft() const { return left; }
-    ASTNode *getRight() const { return right; }
-
-    ASTNode *& getLeftRef() { return left; }
-    ASTNode *& getRightRef() { return right; }
+    std::unique_ptr<ASTNode>& getLeftRef() { return left; }
+    std::unique_ptr<ASTNode>& getRightRef() { return right; }
 };
 
 class UnaryOpNode : public ASTNode {
 private:
-    ASTNode *operand;
+    std::unique_ptr<ASTNode> operand;
 
 public:
-    UnaryOpNode(Token op, ASTNode *operand) : ASTNode(op, NodeType::UnaryOp), operand(operand) {
+    UnaryOpNode(Token op, std::unique_ptr<ASTNode> operand) 
+        : ASTNode(op, NodeType::UnaryOp), operand(std::move(operand)) {
         if (!Token::isUnaryOperation(op.getType())) {
             throw std::runtime_error("UnaryOpNode requires a unary operation token");
         }
     }
 
-    ~UnaryOpNode() { delete operand; }
-
-    ASTNode *getOperand() const { return operand; }
-    ASTNode *& getOperandRef() { return operand; }
+    ASTNode *getOperand() const { return operand.get(); }
+    std::unique_ptr<ASTNode>& getOperandRef() { return operand; }
     
-    void setOperand(ASTNode* newOperand) {
-        operand = newOperand;
+    void setOperand(std::unique_ptr<ASTNode> newOperand) {
+        operand = std::move(newOperand);
     }
 };
 

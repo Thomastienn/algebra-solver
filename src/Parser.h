@@ -1,20 +1,20 @@
 #pragma once
 #include "Lexer.h"
 #include "Nodes.h"
+#include <memory>
 
 class Parser {
 private:
-    Lexer *lexer;
+    std::unique_ptr<Lexer> lexer;
 
 public:
-    Parser(Lexer *lexer) : lexer(lexer) {}
+    Parser(std::unique_ptr<Lexer> lexer) : lexer(std::move(lexer)) {}
     // Current binding power
-    ASTNode *parse(float cur_bp = 0.0f);
-    bool isAssignment(ASTNode *node) { return node->getToken() == TokenType::ASSIGN; };
+    std::unique_ptr<ASTNode> parse(float cur_bp = 0.0f);
+    bool isAssignment(const ASTNode *node) { return node->getToken() == TokenType::ASSIGN; };
 
-    Lexer *getLexer() { return lexer; }
-    void setLexer(Lexer *lexer) { 
-        delete this->lexer;
-        this->lexer = lexer; 
+    Lexer *getLexer() { return lexer.get(); }
+    void setLexer(std::unique_ptr<Lexer> newLexer) { 
+        lexer = std::move(newLexer); 
     }
 };

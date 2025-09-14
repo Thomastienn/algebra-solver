@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+#include <memory>
 #include "Parser.h"
 
 class Evaluation {
@@ -13,6 +14,6 @@ public:
 
     void reset();
 
-    double evaluate(ASTNode* node);
-    void assignment(ASTNode* node);
+    double evaluate(const ASTNode* node);
+    void assignment(const ASTNode* node);
 };
