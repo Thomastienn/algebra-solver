@@ -48,6 +48,9 @@ public:
 
     ASTNode *getLeft() const { return left; }
     ASTNode *getRight() const { return right; }
+
+    ASTNode *& getLeftRef() { return left; }
+    ASTNode *& getRightRef() { return right; }
 };
 
 class UnaryOpNode : public ASTNode {
@@ -64,6 +67,8 @@ public:
     ~UnaryOpNode() { delete operand; }
 
     ASTNode *getOperand() const { return operand; }
+    ASTNode *& getOperandRef() { return operand; }
+    
     void setOperand(ASTNode* newOperand) {
         delete operand;
         operand = newOperand;

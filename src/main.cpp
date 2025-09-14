@@ -1,4 +1,4 @@
-#include "Evaluation.h"
+#include "EquationSolver.h"
 #include <iostream>
 #include <string>
 
@@ -70,9 +70,23 @@ void testEvaluation() {
     std::cout << expr1 << "\n";
     std::cout << expr2 << " = " << result << "\n";
 }
+
+void testReduceUnary() {
+    // std::string expr = "-(+(a-3))";
+    // std::string expr = "+(-a)";
+    std::string expr = "+(+(a-(+3)))";
+    Parser parser(new Lexer(expr));
+    ASTNode *root = parser.parse();
+    std::cout << "Before reduce: " << *root << "\n";
+
+    EquationSolver::reducePlusUnary(root);
+    std::cout << "After reduce: " << *root << "\n";
+    
+    // delete root;
+}
     
 
 int main (int argc, char *argv[]) {
-    testEvaluation();
+    testReduceUnary();
     return 0;
 }

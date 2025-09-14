@@ -1,4 +1,5 @@
 #include "EquationSolver.h"
+#include <iostream>
 
 void EquationSolver::addEquation(ASTNode *equation) { equations.push_back(equation); }
 
@@ -9,16 +10,52 @@ TokenType EquationSolver::mergeUnaryToken(const TokenType &unary1, const TokenTy
     return (numMinus % 2 == 0) ? TokenType::PLUS : TokenType::MINUS;
 }
 
-// Merge AST node like this: +(-x) -> -x or -(-x) -> +x
-void EquationSolver::mergeUnaryIntoBinary(ASTNode *node) {
+void EquationSolver::reducePlusUnary(ASTNode*& node) {
+    std::cout << "Reducing: " << *node << std::endl;
     if (node->getNodeType() == NodeType::Atom) return;
     if (node->getNodeType() == NodeType::UnaryOp) {
+        std::cout << "At UnaryOp: " << *node << std::endl;
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node);
+        std::cout << "Token: " << unaryNode->getToken().getType() << std::endl;
+        if (unaryNode->getToken().getType() == TokenType::PLUS) {
+            std::cout << "Reducing +: " << *node << std::endl;
+            ASTNode *operand = unaryNode->getOperand();
+
+            // Replace unaryNode with its operand
+            unaryNode->setOperand(nullptr);
+            delete unaryNode;
+            unaryNode = nullptr;
+            node = operand;
+
+            std::cout << *node << std::endl;
+            reducePlusUnary(node);
+        } else {
+            std::cout << "Reducing -: " << *node << std::endl;
+            reducePlusUnary(unaryNode->getOperandRef());
+        }
+        return;
+    }
+    if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node);
+
+        reducePlusUnary(binaryNode->getLeftRef());
+        reducePlusUnary(binaryNode->getRightRef());
+        return;
+    }
+    throw std::runtime_error("Unknown node type in reducePlusUnary");
+}
+
+// Merge AST node like this: +(-x) -> -x or -(-x) -> +x
+void EquationSolver::mergeUnaryIntoBinary(ASTNode *node) {
+    if (node->getNodeType() == NodeType::Atom){}
+    else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node);
         ASTNode *operand = unaryNode->getOperand();
 
+        // +(-x)
         if (operand->getNodeType() == NodeType::UnaryOp) {
             UnaryOpNode *innerUnary = static_cast<UnaryOpNode *>(operand);
-            TokenType mergedToken = mergeUnaryToken(
+            TokenType mergedToken = EquationSolver::mergeUnaryToken(
                 unaryNode->getToken().getType(),
                 innerUnary->getToken().getType()
             );
@@ -31,15 +68,20 @@ void EquationSolver::mergeUnaryIntoBinary(ASTNode *node) {
             );
             unaryNode->setOperand(innerUnary->getOperand());
             mergeUnaryIntoBinary(unaryNode);
+        } 
+        // -(-x+2)
+        else if (operand->getNodeType() == NodeType::BinaryOp) {
+            BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(operand);
         }
-        return;
-    }
-    if(node->getNodeType() == NodeType::BinaryOp) {
+    } else if(node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node);
         // TODO
-        return;
+        
+    } else {
+        throw std::runtime_error("Unknown node type in mergeUnaryIntoBinary");
     }
-    throw std::runtime_error("Unknown node type in mergeUnaryIntoBinary");
+
+    EquationSolver::reducePlusUnary(node);
 }
 
 ASTNode *EquationSolver::normalizeEquation(ASTNode *equation) {

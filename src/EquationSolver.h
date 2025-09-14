@@ -11,9 +11,12 @@ public:
     void addEquation(ASTNode* equation);
 
     // Merge +, -, Return unary token
-    TokenType mergeUnaryToken(const TokenType& unary1, const TokenType& unary2);
+    static TokenType mergeUnaryToken(const TokenType& unary1, const TokenType& unary2);
+
+    // Reduce +x -> x
+    static void reducePlusUnary(ASTNode* &node);
     // Merge AST node like this: +(-x) -> -x or -(-x) -> +x
-    void mergeUnaryIntoBinary(ASTNode* node);
+    static void mergeUnaryIntoBinary(ASTNode* node);
     // LHS = RHS -> LHS - RHS = 0
-    ASTNode* normalizeEquation(ASTNode* equation);
+    static ASTNode* normalizeEquation(ASTNode* equation);
 };
