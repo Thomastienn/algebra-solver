@@ -25,6 +25,7 @@ public:
     void setType(const NodeType& newType) { type = newType; }
 
     virtual std::string toString() = 0;
+    virtual std::unique_ptr<ASTNode> clone() const = 0;
 };
 
 class AtomNode : public ASTNode {
@@ -33,6 +34,10 @@ public:
 
     std::string toString() override {
         return getToken().getValue();
+    }
+
+    std::unique_ptr<ASTNode> clone() const override {
+        return std::make_unique<AtomNode>(getToken());
     }
 };
 
@@ -67,6 +72,14 @@ public:
                 " " + getToken().getValue() + " " + 
                 right->toString() + ")";
     }
+
+    std::unique_ptr<ASTNode> clone() const override {
+        return std::make_unique<BinaryOpNode>(
+            getToken(), 
+            left->clone(), 
+            right->clone()
+        );
+    }
 };
 
 class UnaryOpNode : public ASTNode {
@@ -90,6 +103,13 @@ public:
 
     std::string toString() override {
         return getToken().getValue() + operand->toString();
+    }
+
+    std::unique_ptr<ASTNode> clone() const override {
+        return std::make_unique<UnaryOpNode>(
+            getToken(), 
+            operand->clone()
+        );
     }
 };
 

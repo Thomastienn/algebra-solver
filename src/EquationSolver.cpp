@@ -140,16 +140,21 @@ bool EquationSolver::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
                 if (rightBinary->getToken() == TokenType::PLUS || rightBinary->getToken() == TokenType::MINUS) {
                     // Distribute multiplication over addition/subtraction
                     Token opToken = rightBinary->getToken();
+                    Token multiplyToken(TokenType::MULTIPLY, "*");
+
+                    std::unique_ptr<ASTNode> clonedLeft =  binaryNode->getLeft()->clone();
+                    std::unique_ptr<ASTNode> clonedRight = rightBinary->getRight()->clone();
 
                     auto newLeft = std::make_unique<BinaryOpNode>(
-                        Token(TokenType::MULTIPLY, "*"),
+                        multiplyToken,
                         std::move(binaryNode->getLeftRef()),
                         std::move(rightBinary->getLeftRef())
                     );
+
                     auto newRight = std::make_unique<BinaryOpNode>(
-                        Token(TokenType::MULTIPLY, "*"),
-                        std::move(binaryNode->getLeftRef()),
-                        std::move(rightBinary->getRightRef())
+                        multiplyToken,
+                        std::move(clonedLeft),
+                        std::move(clonedRight)
                     );
                     node = std::make_unique<BinaryOpNode>(opToken, std::move(newLeft), std::move(newRight));
                     return true;
@@ -209,13 +214,41 @@ void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
     bool changed;
     int iterations = 0;
     do {
+        std::cout << "Iteration " << iterations << ": " << node->toString() << "\n";
         changed = false;
-        changed |= EquationSolver::eliminateDoubleNegatives(node);
-        changed |= EquationSolver::distributeMinusUnaryInBinary(node);
-        changed |= EquationSolver::removePlusUnary(node);
-        changed |= EquationSolver::mergeBinaryWithRightUnary(node);
-        changed |= EquationSolver::distributeMultiplyBinary(node);
-        changed |= EquationSolver::evaluateConstantBinary(node);
+        std::cout << "Starting eliminateDoubleNegatives step...\n";
+        bool eliminate = EquationSolver::eliminateDoubleNegatives(node);
+        if (eliminate) {
+            std::cout << "After eliminateDoubleNegatives: " << node->toString() << "\n";
+        }
+        std::cout << "Starting distributeMinusUnaryInBinary step...\n";
+        bool distributeMinus = EquationSolver::distributeMinusUnaryInBinary(node);
+        if (distributeMinus) {
+            std::cout << "After distributeMinusUnaryInBinary: " << node->toString() << "\n";
+        }
+        std::cout << "Starting removePlusUnary step...\n";
+        bool plusUnary = EquationSolver::removePlusUnary(node);
+        if (plusUnary) {
+            std::cout << "After removePlusUnary: " << node->toString() << "\n";
+        }
+        std::cout << "Starting mergeBinaryWithRightUnary step...\n";
+        bool mergeBinaryUn = EquationSolver::mergeBinaryWithRightUnary(node);
+        if (mergeBinaryUn) {
+            std::cout << "After mergeBinaryWithRightUnary: " << node->toString() << "\n";
+        }
+        std::cout << "Starting distributeMultiplyBinary step...\n";
+        bool distributeMul = EquationSolver::distributeMultiplyBinary(node);
+        if (distributeMul) {
+            std::cout << "After distributeMultiplyBinary: " << node->toString() << "\n";
+        }
+        std::cout << "Starting evaluateConstantBinary step...\n";
+        bool evalConst = EquationSolver::evaluateConstantBinary(node);
+        if (evalConst) {
+            std::cout << "After evaluateConstantBinary: " << node->toString() << "\n";
+        }
+        std::cout << "\n";
+
+        changed |= eliminate | distributeMinus | plusUnary | mergeBinaryUn | distributeMul | evalConst;
         iterations++;
     } while (changed);
     // Just benchmark info
