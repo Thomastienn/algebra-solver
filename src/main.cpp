@@ -113,7 +113,7 @@ void testEvaluateConstantBinary(){
 }
 
 void testDistributeMultiplyBinary(){
-    std::string expr = "2 * (3 + x)";
+    std::string expr = "(3 + x) * 3";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -124,6 +124,6 @@ void testDistributeMultiplyBinary(){
 }
 
 int main (int argc, char *argv[]) {
-    testSimplify();
+    testDistributeMultiplyBinary();
     return 0;
 }

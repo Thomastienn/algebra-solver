@@ -134,31 +134,51 @@ bool EquationSolver::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
     if (node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
         if (binaryNode->getToken() == TokenType::MULTIPLY) {
-            ASTNode *right = binaryNode->getRight();
-            if (right->getNodeType() == NodeType::BinaryOp) {
-                BinaryOpNode *rightBinary = static_cast<BinaryOpNode *>(right);
-                if (rightBinary->getToken() == TokenType::PLUS || rightBinary->getToken() == TokenType::MINUS) {
-                    // Distribute multiplication over addition/subtraction
-                    Token opToken = rightBinary->getToken();
-                    Token multiplyToken(TokenType::MULTIPLY, "*");
+            // ASTNode *side = binaryNode->getRight();
 
-                    std::unique_ptr<ASTNode> clonedLeft =  binaryNode->getLeft()->clone();
-                    std::unique_ptr<ASTNode> clonedRight = rightBinary->getRight()->clone();
+            // isRight: which side is the Binary One and the other one gonna distribute inside
+            auto tryDistribute = [&](ASTNode *side, bool isRight) -> bool {
+                if (side->getNodeType() == NodeType::BinaryOp) {
+                    BinaryOpNode *sideBinary = static_cast<BinaryOpNode *>(side);
+                    if (sideBinary->getToken() == TokenType::PLUS || sideBinary->getToken() == TokenType::MINUS) {
+                        // Distribute multiplication over addition/subtraction
+                        Token opToken = sideBinary->getToken();
+                        Token multiplyToken(TokenType::MULTIPLY, "*");
 
-                    auto newLeft = std::make_unique<BinaryOpNode>(
-                        multiplyToken,
-                        std::move(binaryNode->getLeftRef()),
-                        std::move(rightBinary->getLeftRef())
-                    );
+                        std::unique_ptr<ASTNode> clonedLeft =  binaryNode->getLeft()->clone();
+                        std::unique_ptr<ASTNode> clonedRight = sideBinary->getRight()->clone();
 
-                    auto newRight = std::make_unique<BinaryOpNode>(
-                        multiplyToken,
-                        std::move(clonedLeft),
-                        std::move(clonedRight)
-                    );
-                    node = std::make_unique<BinaryOpNode>(opToken, std::move(newLeft), std::move(newRight));
-                    return true;
+                        ASTNode *distributor = isRight ? 
+                            binaryNode->getLeft() : 
+                            binaryNode->getRight();
+
+                        // Right
+                        // a * (right1 op right2) -> (a * right1) op (a * right2)
+                        // Left
+                        // (left1 op left2) * a -> (left1 * a) op (left2 * a)
+
+                        std::unique_ptr<ASTNode> newLeft  = std::make_unique<BinaryOpNode>(
+                            multiplyToken,
+                            distributor->clone(),
+                            std::move(sideBinary->getLeftRef())
+                        );
+                        std::unique_ptr<ASTNode> newRight = std::make_unique<BinaryOpNode>(
+                            multiplyToken,
+                            distributor->clone(),
+                            std::move(sideBinary->getRightRef())
+                        );
+
+                        node = std::make_unique<BinaryOpNode>(opToken, std::move(newLeft), std::move(newRight));
+                        return true;
+                    }
                 }
+                return false;
+            };
+            if (
+                tryDistribute(binaryNode->getRight(), true) || 
+                tryDistribute(binaryNode->getLeft(), false)
+            ) {
+                return true;
             }
         }
         bool leftChanged = distributeMultiplyBinary(binaryNode->getLeftRef());
