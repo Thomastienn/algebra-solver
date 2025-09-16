@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <memory>
+#include <unordered_set>
 #include "Evaluation.h"
 
 class EquationSolver {
@@ -21,6 +22,9 @@ public:
 
     // Merge +, -, Return unary token
     static TokenType mergeUnaryToken(const TokenType& unary1, const TokenType& unary2);
+    
+    // List of variables that this variable depends on
+    static std::unordered_set<Token> dependencies(const Token &variable, std::unique_ptr<ASTNode> equation);
 
     // Merge AST node like this: +(-x) -> -x or -(-x) -> +x
     static void mergeUnaryIntoBinary(std::unique_ptr<ASTNode>& node);

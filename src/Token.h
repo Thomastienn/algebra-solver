@@ -24,6 +24,7 @@ enum TokenType {
     SQRT,
 };
 
+
 class Token {
 public:
     Token() : type(UNKNOWN), value("") {}
@@ -32,6 +33,8 @@ public:
 
     bool operator==(const TokenType &other) const { return this->getType() == other; }
     bool operator!=(const TokenType &other) const { return this->getType() != other; }
+    bool operator==(const Token &other) const { return this->getType() == other.getType() && this->getValue() == other.getValue(); }
+    bool operator!=(const Token &other) const { return !(*this == other); }
 
     TokenType getType() const { return type; }
     const std::string &getValue() const { return value; }
@@ -51,3 +54,12 @@ private:
     TokenType type;
     std::string value;
 };
+
+namespace std {
+    template <>
+    struct hash<Token> {
+        size_t operator()(const Token &token) const {
+            return hash<int>()(static_cast<int>(token.getType())) ^ hash<std::string>()(token.getValue());
+        }
+    };
+}

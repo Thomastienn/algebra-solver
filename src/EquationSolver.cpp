@@ -298,6 +298,37 @@ std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNo
     return newEquation;
 }
 
+std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, std::unique_ptr<ASTNode> equation) {
+    std::unordered_set<Token> deps;
+    if (equation->getNodeType() == NodeType::Atom) {
+        if (equation->getToken() == TokenType::VARIABLE &&
+            equation->getToken() != variable) {
+            deps.insert(equation->getToken());
+        }
+    } else if (equation->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(equation.get());
+        std::unordered_set<Token> leftDeps = EquationSolver::dependencies(
+            variable, 
+            std::move(binaryNode->getLeftRef())
+        );
+        std::unordered_set<Token> rightDeps = EquationSolver::dependencies(
+            variable, 
+            std::move(binaryNode->getRightRef())
+        );
+        deps.merge(leftDeps);
+        deps.merge(rightDeps);
+    } else if (equation->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(equation.get());
+        std::unordered_set<Token> operandDeps = EquationSolver::dependencies(
+            variable, 
+            std::move(unaryNode->getOperandRef())
+        );
+        deps.merge(operandDeps);
+    }
+
+    return deps;
+}
+
 std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {
     if (equation->getNodeType() != NodeType::BinaryOp || equation->getToken() != TokenType::ASSIGN) {
         throw std::runtime_error("Equation must be an assignment (LHS = RHS)");

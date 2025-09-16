@@ -123,7 +123,22 @@ void testDistributeMultiplyBinary(){
     std::cout << "Distributed: " << root->toString() << "\n";
 }
 
+void testDependencies(){
+    std::string expr = "y = 3 + y * (n*1 - x) + z^m";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Expression: " << root->toString() << "\n";
+    EquationSolver equationSolver;
+    auto deps = equationSolver.dependencies(Token(VARIABLE, "y"), std::move(root));
+    std::cout << "Dependencies of y: ";
+    for (const auto &dep : deps) {
+        std::cout << dep.getValue() << " ";
+    }
+    std::cout << "\n";
+}
+
 int main (int argc, char *argv[]) {
-    testDistributeMultiplyBinary();
+    testDependencies();
     return 0;
 }
