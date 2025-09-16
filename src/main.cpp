@@ -1,4 +1,7 @@
+#define private public
 #include "EquationSolver.h"
+#undef private
+
 #include <iostream>
 #include <string>
 #include <memory>
@@ -78,7 +81,8 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
+    std::string expr = "2 + 3 * (4 - 1)-4*(a-2)";
+    // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -97,7 +101,18 @@ void testNormalize() {
     std::cout << "Normalized: " << normalized->toString() << "\n";
 }
 
+void testEvaluateConstantBinary(){
+    std::string expr = "2 + 3 * (4 - 1)-4*(a-2)";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    EquationSolver equationSolver;
+    equationSolver.evaluateConstantBinary(root);
+    std::cout << "Evaluated: " << root->toString() << "\n";
+}
+
 int main (int argc, char *argv[]) {
-    testNormalize();
+    testSimplify();
     return 0;
 }

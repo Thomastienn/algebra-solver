@@ -11,6 +11,8 @@ private:
     static bool distributeMinusUnaryInBinary(std::unique_ptr<ASTNode>& node); // e.g., -(x + y) -> -x + -y
     static bool removePlusUnary(std::unique_ptr<ASTNode>& node); // e.g., +x -> x
     static bool mergeBinaryWithRightUnary(std::unique_ptr<ASTNode>& node); // e.g., x + (-y) -> x - y
+    static bool distributeMultiplyBinary(std::unique_ptr<ASTNode>& node); // e.g., a * (b + c) -> a*b + a*c
+    static bool evaluateConstantBinary(std::unique_ptr<ASTNode>& node); // e.g., 2 + 3 -> 5
     
 public:
     EquationSolver(): equations(std::vector<std::unique_ptr<ASTNode>>()) {};

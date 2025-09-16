@@ -16,4 +16,7 @@ public:
 
     double evaluate(const ASTNode* node);
     void assignment(const ASTNode* node);
+    
+    static double evaluateExpression(Token left, Token op, Token right);
+    static double evaluateExpression(double left, Token op, double right);
 };

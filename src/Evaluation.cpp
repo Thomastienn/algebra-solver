@@ -1,4 +1,5 @@
 #include "Evaluation.h"
+#include "Token.h"
 #include <cmath>
 
 void Evaluation::reset() {
@@ -33,19 +34,7 @@ double Evaluation::evaluate(const ASTNode* node) {
             double leftVal = Evaluation::evaluate(binNode->getLeft());
             double rightVal = Evaluation::evaluate(binNode->getRight());
             Token opToken = binNode->getToken();
-            switch (opToken.getType()) {
-                case TokenType::PLUS: return leftVal + rightVal;
-                case TokenType::MINUS: return leftVal - rightVal;
-                case TokenType::MULTIPLY: return leftVal * rightVal;
-                case TokenType::DIVIDE:
-                    if (rightVal == 0) {
-                        throw std::runtime_error("Division by zero");
-                    }
-                    return leftVal / rightVal;
-                case TokenType::POWER: return std::pow(leftVal, rightVal);
-                default:
-                    throw std::runtime_error("Unsupported binary operator");
-            }
+            return Evaluation::evaluateExpression(leftVal, opToken, rightVal);
         }
         case NodeType::UnaryOp: {
             const UnaryOpNode* unNode = dynamic_cast<const UnaryOpNode*>(node);
@@ -89,4 +78,28 @@ void Evaluation::assignment(const ASTNode* node) {
     std::string varName = leftNode->getToken().getValue();
     double value = Evaluation::evaluate(rightNode);
     Evaluation::variables[varName] = value;
+}
+
+double Evaluation::evaluateExpression(double left, Token op, double right){
+    switch(op.getType()){
+        case TokenType::PLUS:
+            return left + right;
+        case TokenType::MINUS:
+            return left - right;
+        case TokenType::MULTIPLY:
+            return left * right;
+        case TokenType::DIVIDE:
+            if (right == 0) {
+                throw std::runtime_error("Division by zero");
+            }
+            return left / right;
+        case TokenType::POWER:
+            return std::pow(left, right);
+        default:
+            throw std::runtime_error("Unsupported operator in expression evaluation");
+    }
+}
+
+double Evaluation::evaluateExpression(Token left, Token op, Token right){
+    return Evaluation::evaluateExpression(std::stod(left.getValue()), op, std::stod(right.getValue()));
 }

@@ -1,6 +1,7 @@
 #include "EquationSolver.h"
 #include <cassert>
 #include <iostream>
+#include <cmath>
 
 void EquationSolver::addEquation(std::unique_ptr<ASTNode> equation) { 
     equations.push_back(std::move(equation)); 
@@ -126,6 +127,83 @@ bool EquationSolver::mergeBinaryWithRightUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+bool EquationSolver::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    }
+    if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        if (binaryNode->getToken() == TokenType::MULTIPLY) {
+            ASTNode *right = binaryNode->getRight();
+            if (right->getNodeType() == NodeType::BinaryOp) {
+                BinaryOpNode *rightBinary = static_cast<BinaryOpNode *>(right);
+                if (rightBinary->getToken() == TokenType::PLUS || rightBinary->getToken() == TokenType::MINUS) {
+                    // Distribute multiplication over addition/subtraction
+                    Token opToken = rightBinary->getToken();
+
+                    auto newLeft = std::make_unique<BinaryOpNode>(
+                        Token(TokenType::MULTIPLY, "*"),
+                        std::move(binaryNode->getLeftRef()),
+                        std::move(rightBinary->getLeftRef())
+                    );
+                    auto newRight = std::make_unique<BinaryOpNode>(
+                        Token(TokenType::MULTIPLY, "*"),
+                        std::move(binaryNode->getLeftRef()),
+                        std::move(rightBinary->getRightRef())
+                    );
+                    node = std::make_unique<BinaryOpNode>(opToken, std::move(newLeft), std::move(newRight));
+                    return true;
+                }
+            }
+        }
+        bool leftChanged = distributeMultiplyBinary(binaryNode->getLeftRef());
+        bool rightChanged = distributeMultiplyBinary(binaryNode->getRightRef());
+        return leftChanged || rightChanged;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return distributeMultiplyBinary(unaryNode->getOperandRef());
+    }
+    return false;
+}
+
+bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    }
+    if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+
+        bool leftChanged = evaluateConstantBinary(binaryNode->getLeftRef());
+        bool rightChanged = evaluateConstantBinary(binaryNode->getRightRef());
+
+        ASTNode *left = binaryNode->getLeft();
+        ASTNode *right = binaryNode->getRight();
+
+        if (
+            left && right &&
+            left->getNodeType() == NodeType::Atom && right->getNodeType() == NodeType::Atom
+        ) {
+            AtomNode *leftAtom = static_cast<AtomNode *>(left);
+            AtomNode *rightAtom = static_cast<AtomNode *>(right);
+            if (leftAtom->getToken().getType() == TokenType::NUMBER && rightAtom->getToken().getType() == TokenType::NUMBER) {
+                // Both sides are numbers, perform the operation
+                double result = Evaluation::evaluateExpression(
+                    leftAtom->getToken(), 
+                    binaryNode->getToken(), 
+                    rightAtom->getToken()
+                );
+                node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(result)));
+                return true;
+            }
+        }
+        return leftChanged || rightChanged;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return evaluateConstantBinary(unaryNode->getOperandRef());
+    }
+    return false;
+}
+
 void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
     std::cout << "Simplifying: " << node->toString() << "\n";
     bool changed;
@@ -136,6 +214,8 @@ void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
         changed |= EquationSolver::distributeMinusUnaryInBinary(node);
         changed |= EquationSolver::removePlusUnary(node);
         changed |= EquationSolver::mergeBinaryWithRightUnary(node);
+        changed |= EquationSolver::distributeMultiplyBinary(node);
+        changed |= EquationSolver::evaluateConstantBinary(node);
         iterations++;
     } while (changed);
     // Just benchmark info
