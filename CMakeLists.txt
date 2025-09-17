@@ -8,11 +8,11 @@ endif()
 
 add_executable(AlgebraSolver 
     src/main.cpp
-    src/core/Lexer.cpp
-    src/core/Token.cpp
-    src/core/Parser.cpp
-    src/core/Evaluation.cpp
-    src/core/EquationSolver.cpp
+    src/core/lexer/Lexer.cpp
+    src/core/lexer/Token.cpp
+    src/core/parser/Parser.cpp
+    src/core/solver/Evaluation.cpp
+    src/core/solver/EquationSolver.cpp
     src/utils/Math.cpp
 )
 

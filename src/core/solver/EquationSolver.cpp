@@ -302,6 +302,7 @@ std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, st
 
 bool EquationSolver::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     // TODO
+    return false;
 }
 
 bool EquationSolver::isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable){
@@ -320,6 +321,21 @@ bool EquationSolver::isIsolated(std::unique_ptr<ASTNode>& node, const std::strin
     return false;   
 }
 
+bool EquationSolver::containsVariable(std::unique_ptr<ASTNode>& node, const std::string& variable) {
+    if (node->getNodeType() == NodeType::Atom) {
+        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
+        return atomNode->getToken().getType() == TokenType::VARIABLE && 
+               atomNode->getToken().getValue() == variable;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return EquationSolver::containsVariable(unaryNode->getOperandRef(), variable);
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        return EquationSolver::containsVariable(static_cast<BinaryOpNode *>(node.get())->getLeftRef(), variable) || 
+               EquationSolver::containsVariable(static_cast<BinaryOpNode *>(node.get())->getRightRef(), variable);
+    }
+    return false;   
+}
+
 std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {
     if (equation->getNodeType() != NodeType::BinaryOp || equation->getToken() != TokenType::ASSIGN) {
         throw std::runtime_error("Equation must be an assignment (LHS = RHS)");
@@ -328,43 +344,105 @@ std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode
     BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(equation.get());
 
     // Check if LHS only has constant and variable
-    EquationSolver::simplify(assignNode->getLeftRef());
-    EquationSolver::simplify(assignNode->getRightRef());
+    // EquationSolver::simplify(assignNode->getLeftRef());
+    // EquationSolver::simplify(assignNode->getRightRef());
     
     if (EquationSolver::isIsolated(assignNode->getLeftRef(), variable)) {
         return equation; // Already isolated
     }
 
     // Depends on type of LHS, we deal with it
+    // lhs = rhs
     ASTNode *lhs = assignNode->getLeft();
+    ASTNode *rhs = assignNode->getRight();
 
+    // LHS
+    // L op R 
     if (lhs->getNodeType() == NodeType::BinaryOp) {
-        cout << "LHS is BinaryOp\n";
         BinaryOpNode *lhsBinary = static_cast<BinaryOpNode *>(lhs);
         TokenType opType = lhsBinary->getToken().getType();
 
-        bool leftHasVar = EquationSolver::isIsolated(lhsBinary->getLeftRef(), variable);
-        bool rightHasVar = EquationSolver::isIsolated(lhsBinary->getRightRef(), variable);
+        bool leftHasVar = EquationSolver::containsVariable(lhsBinary->getLeftRef(), variable);
+        bool rightHasVar = EquationSolver::containsVariable(lhsBinary->getRightRef(), variable);
 
-        if (leftHasVar && !rightHasVar) {
+        //   L       R
+        // (2*x) - (3+x) = RHS
+        if (leftHasVar && rightHasVar) {
+            // Solve it without the R
+            unique_ptr<ASTNode> newEq = EquationSolver::isolateVariable(
+                std::make_unique<BinaryOpNode>(
+                    Token(TokenType::ASSIGN, "="),
+                    lhsBinary->getLeft()->clone(),
+                    rhs->clone()
+                ),
+                variable
+            );
+            unique_ptr<ASTNode> newL = std::move(static_cast<BinaryOpNode *>(newEq.get())->getLeftRef());
+            unique_ptr<ASTNode> newRHS = std::move(static_cast<BinaryOpNode *>(newEq.get())->getRightRef());
+            
+            // Solve it without the L but with newRHS
+            unique_ptr<ASTNode> newEq2 = EquationSolver::isolateVariable(
+                std::make_unique<BinaryOpNode>(
+                    Token(TokenType::ASSIGN, "="),
+                    lhsBinary->getRight()->clone(),
+                    std::move(newRHS)
+                ),
+                variable
+            );
+            unique_ptr<ASTNode> newR = std::move(static_cast<BinaryOpNode *>(newEq2.get())->getLeftRef());
+            unique_ptr<ASTNode> finalRHS = std::move(static_cast<BinaryOpNode *>(newEq2.get())->getRightRef());
+
+            // Combine newL and newR based on the original operation
+            unique_ptr<ASTNode> combinedLHS = std::make_unique<BinaryOpNode>(
+                lhsBinary->getToken(),
+                std::move(newL),
+                std::move(newR)
+            );
+            
+            // Final equation
+            return std::make_unique<BinaryOpNode>(
+                Token(TokenType::ASSIGN, "="),
+                std::move(combinedLHS),
+                std::move(finalRHS)
+            );
+        }
+
+        //  L    R
+        // 2*x - 3 = RHS
+        // or
+        // 3 + x = RHS
+        if (leftHasVar ^ rightHasVar) {
             // Left side has the variable, move right side to RHS
             TokenType newOp = Token::getInverseOperation(opType);
+
+            // Move the side without variable to the RHS with the inverse operation
             auto newRHS = std::make_unique<BinaryOpNode>(
                 Token(newOp, std::string(1, Token::operationToChr(newOp))),
                 std::move(assignNode->getRightRef()),
-                std::move(lhsBinary->getRightRef())
+                leftHasVar ? 
+                    std::move(lhsBinary->getRightRef()) :
+                    std::move(lhsBinary->getLeftRef())
             );
+
+            // The one with var stays the same place on LHS
             return EquationSolver::isolateVariable(
                 std::make_unique<BinaryOpNode>(
                     Token(TokenType::ASSIGN, "="),
-                    std::move(lhsBinary->getLeftRef()),
+                    leftHasVar ?
+                        std::move(lhsBinary->getLeftRef()) :
+                        std::move(lhsBinary->getRightRef()),
                     std::move(newRHS)
                 ),
                 variable
             );
         }
-        // TODO
+
+        // Only case
+        // none of them has variable
+        // This should not happens
+        dbg(lhsBinary->toString());
+        throw std::runtime_error("Cannot isolate variable: variable not found in LHS");
     }
 
-    return nullptr;
+    return equation;
 }

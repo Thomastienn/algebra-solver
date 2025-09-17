@@ -23,6 +23,11 @@ private:
     // Check if the variable is isolated on one side of the equation
     // If x in the only variable in this node, return true
     static bool isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable);
+
+    // Check if the node contains the variable
+    // If x appear once in this node, return true
+    static bool containsVariable(std::unique_ptr<ASTNode>& node, const std::string& variable);
+
 public:
     EquationSolver(): equations(std::vector<std::unique_ptr<ASTNode>>()) {};
     EquationSolver(std::vector<std::unique_ptr<ASTNode>> eqs): equations(std::move(eqs)) {};
