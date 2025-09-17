@@ -1,5 +1,5 @@
 #define private public
-#include "EquationSolver.h"
+#include "core/EquationSolver.h"
 #undef private
 
 #include <iostream>
@@ -139,7 +139,7 @@ void testDependencies(){
 }
 
 void testIsIsolateSide(){
-    std::string expr = "x+2=3*y";
+    std::string expr = "x=3*y";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();

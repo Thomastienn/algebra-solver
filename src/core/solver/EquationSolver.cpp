@@ -240,6 +240,7 @@ void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
         changed = EquationSolver::mergeBinaryWithRightUnary(node);
         changed |= EquationSolver::distributeMultiplyBinary(node);
         changed |= EquationSolver::evaluateConstantBinary(node);
+        changed |= EquationSolver::combineLikeTerms(node);
 
         iterations++;
     } while (changed);
@@ -299,13 +300,16 @@ std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, st
     return deps;
 }
 
+bool EquationSolver::combineLikeTerms(std::unique_ptr<ASTNode> &node){
+    // TODO
+}
+
 bool EquationSolver::isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable){
     if (node->getNodeType() == NodeType::Atom) {
         AtomNode *atomNode = static_cast<AtomNode *>(node.get());
         bool varAtom = atomNode->getToken().getType() == TokenType::VARIABLE && 
                 atomNode->getToken().getValue() == variable;
-        bool constAtom = atomNode->getToken().getType() == TokenType::NUMBER;
-        return varAtom || constAtom;
+        return varAtom;
     } else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
         return EquationSolver::isIsolated(unaryNode->getOperandRef(), variable);
@@ -342,7 +346,6 @@ std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode
         bool leftHasVar = EquationSolver::isIsolated(lhsBinary->getLeftRef(), variable);
         bool rightHasVar = EquationSolver::isIsolated(lhsBinary->getRightRef(), variable);
 
-        dbg(leftHasVar, rightHasVar);
         if (leftHasVar && !rightHasVar) {
             // Left side has the variable, move right side to RHS
             TokenType newOp = Token::getInverseOperation(opType);

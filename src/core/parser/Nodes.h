@@ -1,5 +1,5 @@
 #pragma once
-#include "Token.h"
+#include "../lexer/Token.h"
 #include <memory>
 
 enum class NodeType {

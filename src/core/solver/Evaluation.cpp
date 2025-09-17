@@ -1,5 +1,5 @@
 #include "Evaluation.h"
-#include "Token.h"
+#include "../lexer/Token.h"
 #include <cmath>
 
 void Evaluation::reset() {

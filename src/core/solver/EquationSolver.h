@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_set>
-#include "utils/Debug.h"
+#include "../../utils/Debug.h"
 #include "Evaluation.h"
 
 class EquationSolver {
@@ -10,15 +10,18 @@ private:
     std::vector<std::unique_ptr<ASTNode>> equations;
 
     // Algebric simplification methods
+    static bool groupTokenTerms(std::unique_ptr<ASTNode>& node); // e.g., 2*x -> 2x (Single Token)
     static bool eliminateDoubleNegatives(std::unique_ptr<ASTNode>& node); // e.g., --x -> x
     static bool distributeMinusUnaryInBinary(std::unique_ptr<ASTNode>& node); // e.g., -(x + y) -> -x + -y
     static bool removePlusUnary(std::unique_ptr<ASTNode>& node); // e.g., +x -> x
     static bool mergeBinaryWithRightUnary(std::unique_ptr<ASTNode>& node); // e.g., x + (-y) -> x - y
     static bool distributeMultiplyBinary(std::unique_ptr<ASTNode>& node); // e.g., a * (b + c) -> a*b + a*c
     static bool evaluateConstantBinary(std::unique_ptr<ASTNode>& node); // e.g., 2 + 3 -> 5
+    static bool combineLikeTerms(std::unique_ptr<ASTNode>& node); // e.g., 2*x + 3*x -> 5*x
 
     
     // Check if the variable is isolated on one side of the equation
+    // If x in the only variable in this node, return true
     static bool isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable);
 public:
     EquationSolver(): equations(std::vector<std::unique_ptr<ASTNode>>()) {};

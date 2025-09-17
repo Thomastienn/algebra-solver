@@ -1,5 +1,5 @@
 #pragma once
-#include "Lexer.h"
+#include "../lexer/Lexer.h"
 #include "Nodes.h"
 #include <memory>
 
