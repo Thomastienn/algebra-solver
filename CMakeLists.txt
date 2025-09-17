@@ -14,6 +14,5 @@ add_executable(AlgebraSolver
     src/Evaluation.cpp
     src/EquationSolver.cpp
     src/utils/Math.cpp
-    src/utils/Debug.cpp
 )
 

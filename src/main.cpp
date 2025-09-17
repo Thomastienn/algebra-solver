@@ -138,7 +138,34 @@ void testDependencies(){
     std::cout << "\n";
 }
 
+void testIsIsolateSide(){
+    std::string expr = "x+2=3*y";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Expression: " << root->toString() << "\n";
+    EquationSolver equationSolver;
+    BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(root.get());
+    bool lhsIsolated = equationSolver.isIsolated(assignNode->getLeftRef(), "x");
+    bool rhsIsolated = equationSolver.isIsolated(assignNode->getRightRef(), "x");
+    std::cout << "LHS is isolated for x: " << (lhsIsolated ? "true" : "false") << "\n";
+    std::cout << "RHS is isolated for x: " << (rhsIsolated ? "true" : "false") << "\n";
+}
+
+void testIsolateVariable(){
+    std::string expr = "x+2=3*y";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+
+    EquationSolver equationSolver;
+    auto isolated = equationSolver.isolateVariable(std::move(root), "x");
+    std::cout << "Isolated x: " << isolated->toString() << "\n";
+}
+
 int main (int argc, char *argv[]) {
-    testDependencies();
+    // testIsIsolateSide();
+    testIsolateVariable();
     return 0;
 }

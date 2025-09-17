@@ -230,49 +230,19 @@ bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
 }
 
 void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
-    std::cout << "Simplifying: " << node->toString() << "\n";
     bool changed;
     int iterations = 0;
     do {
-        std::cout << "Iteration " << iterations << ": " << node->toString() << "\n";
         changed = false;
-        std::cout << "Starting eliminateDoubleNegatives step...\n";
-        bool eliminate = EquationSolver::eliminateDoubleNegatives(node);
-        if (eliminate) {
-            std::cout << "After eliminateDoubleNegatives: " << node->toString() << "\n";
-        }
-        std::cout << "Starting distributeMinusUnaryInBinary step...\n";
-        bool distributeMinus = EquationSolver::distributeMinusUnaryInBinary(node);
-        if (distributeMinus) {
-            std::cout << "After distributeMinusUnaryInBinary: " << node->toString() << "\n";
-        }
-        std::cout << "Starting removePlusUnary step...\n";
-        bool plusUnary = EquationSolver::removePlusUnary(node);
-        if (plusUnary) {
-            std::cout << "After removePlusUnary: " << node->toString() << "\n";
-        }
-        std::cout << "Starting mergeBinaryWithRightUnary step...\n";
-        bool mergeBinaryUn = EquationSolver::mergeBinaryWithRightUnary(node);
-        if (mergeBinaryUn) {
-            std::cout << "After mergeBinaryWithRightUnary: " << node->toString() << "\n";
-        }
-        std::cout << "Starting distributeMultiplyBinary step...\n";
-        bool distributeMul = EquationSolver::distributeMultiplyBinary(node);
-        if (distributeMul) {
-            std::cout << "After distributeMultiplyBinary: " << node->toString() << "\n";
-        }
-        std::cout << "Starting evaluateConstantBinary step...\n";
-        bool evalConst = EquationSolver::evaluateConstantBinary(node);
-        if (evalConst) {
-            std::cout << "After evaluateConstantBinary: " << node->toString() << "\n";
-        }
-        std::cout << "\n";
+        changed |= EquationSolver::eliminateDoubleNegatives(node);
+        changed |= EquationSolver::distributeMinusUnaryInBinary(node);
+        changed |= EquationSolver::removePlusUnary(node);
+        changed = EquationSolver::mergeBinaryWithRightUnary(node);
+        changed |= EquationSolver::distributeMultiplyBinary(node);
+        changed |= EquationSolver::evaluateConstantBinary(node);
 
-        changed |= eliminate | distributeMinus | plusUnary | mergeBinaryUn | distributeMul | evalConst;
         iterations++;
     } while (changed);
-    // Just benchmark info
-    std::cout << "Simplification completed in " << iterations << " iterations.\n";
 }
 
 std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNode> equation) {
@@ -329,16 +299,69 @@ std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, st
     return deps;
 }
 
+bool EquationSolver::isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable){
+    if (node->getNodeType() == NodeType::Atom) {
+        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
+        bool varAtom = atomNode->getToken().getType() == TokenType::VARIABLE && 
+                atomNode->getToken().getValue() == variable;
+        bool constAtom = atomNode->getToken().getType() == TokenType::NUMBER;
+        return varAtom || constAtom;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return EquationSolver::isIsolated(unaryNode->getOperandRef(), variable);
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        return EquationSolver::isIsolated(static_cast<BinaryOpNode *>(node.get())->getLeftRef(), variable) && 
+               EquationSolver::isIsolated(static_cast<BinaryOpNode *>(node.get())->getRightRef(), variable);
+    }
+    return false;   
+}
+
 std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {
     if (equation->getNodeType() != NodeType::BinaryOp || equation->getToken() != TokenType::ASSIGN) {
         throw std::runtime_error("Equation must be an assignment (LHS = RHS)");
     }
 
     BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(equation.get());
-    ASTNode *lhs = assignNode->getLeft();
-    ASTNode *rhs = assignNode->getRight();
 
-    // TODO
+    // Check if LHS only has constant and variable
+    EquationSolver::simplify(assignNode->getLeftRef());
+    EquationSolver::simplify(assignNode->getRightRef());
+    
+    if (EquationSolver::isIsolated(assignNode->getLeftRef(), variable)) {
+        return equation; // Already isolated
+    }
+
+    // Depends on type of LHS, we deal with it
+    ASTNode *lhs = assignNode->getLeft();
+
+    if (lhs->getNodeType() == NodeType::BinaryOp) {
+        cout << "LHS is BinaryOp\n";
+        BinaryOpNode *lhsBinary = static_cast<BinaryOpNode *>(lhs);
+        TokenType opType = lhsBinary->getToken().getType();
+
+        bool leftHasVar = EquationSolver::isIsolated(lhsBinary->getLeftRef(), variable);
+        bool rightHasVar = EquationSolver::isIsolated(lhsBinary->getRightRef(), variable);
+
+        dbg(leftHasVar, rightHasVar);
+        if (leftHasVar && !rightHasVar) {
+            // Left side has the variable, move right side to RHS
+            TokenType newOp = Token::getInverseOperation(opType);
+            auto newRHS = std::make_unique<BinaryOpNode>(
+                Token(newOp, std::string(1, Token::operationToChr(newOp))),
+                std::move(assignNode->getRightRef()),
+                std::move(lhsBinary->getRightRef())
+            );
+            return EquationSolver::isolateVariable(
+                std::make_unique<BinaryOpNode>(
+                    Token(TokenType::ASSIGN, "="),
+                    std::move(lhsBinary->getLeftRef()),
+                    std::move(newRHS)
+                ),
+                variable
+            );
+        }
+        // TODO
+    }
 
     return nullptr;
 }
