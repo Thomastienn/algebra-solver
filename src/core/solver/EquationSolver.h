@@ -50,10 +50,11 @@ private:
 
     /*
     Flatten tree structure for associative operations
-    Could only be an Atom or UnaryOp node contains a single Atom token
-    e.g., (a + (b - c)) -> [a, b, -c]
+    Could be an Atom or UnaryOp node contains a single Atom token
+    Or other unrelated structure
+    e.g., (a + (b - c) + 3*d) -> [a, b, -c, 3*d]
     */
-    static std::vector<std::unique_ptr<ASTNode>> flattenNode(std::unique_ptr<ASTNode>& node);
+    static std::vector<ASTNode*> flattenNode(std::unique_ptr<ASTNode>& node);
 
 public:
     EquationSolver(): equations(std::vector<std::unique_ptr<ASTNode>>()) {};

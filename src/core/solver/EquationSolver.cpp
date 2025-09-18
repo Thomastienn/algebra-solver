@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <cmath>
+#include <memory>
 
 void EquationSolver::addEquation(std::unique_ptr<ASTNode> equation) { 
     equations.push_back(std::move(equation)); 
@@ -190,23 +191,23 @@ bool EquationSolver::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
     }
     return false;
 }
-std::vector<std::unique_ptr<ASTNode>> EquationSolver::flattenNode(std::unique_ptr<ASTNode>& node){
-    std::vector<std::unique_ptr<ASTNode>> nodes;
+std::vector<ASTNode*> EquationSolver::flattenNode(std::unique_ptr<ASTNode>& node){
+    std::vector<ASTNode*> nodes;
     if (node->getNodeType() == NodeType::Atom) {
-        nodes.push_back(node->clone());
+        nodes.push_back(node.get());
     }
     else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
         ASTNode *child = unaryNode->getOperand();
         if (child->getNodeType() == NodeType::Atom) {
-            nodes.push_back(node->clone());
+            nodes.push_back(node.get());
         } else {
-            std::vector<std::unique_ptr<ASTNode>> recur = 
+            std::vector<ASTNode*> recur = 
                 EquationSolver::flattenNode(unaryNode->getOperandRef());
             nodes.insert(
                 nodes.end(), 
-                std::make_move_iterator(recur.begin()),
-                std::make_move_iterator(recur.end())
+                recur.begin(),
+                recur.end()
             );
         }
         
@@ -217,15 +218,15 @@ std::vector<std::unique_ptr<ASTNode>> EquationSolver::flattenNode(std::unique_pt
             auto leftNodes = EquationSolver::flattenNode(binaryNode->getLeftRef());
             auto rightNodes = EquationSolver::flattenNode(binaryNode->getRightRef());
             nodes.insert(nodes.end(), 
-                std::make_move_iterator(leftNodes.begin()), 
-                std::make_move_iterator(leftNodes.end())
+                leftNodes.begin(), 
+                leftNodes.end()
             );
             nodes.insert(nodes.end(), 
-                std::make_move_iterator(rightNodes.begin()), 
-                std::make_move_iterator(rightNodes.end())
+                rightNodes.begin(), 
+                rightNodes.end()
             );
         } else {
-            nodes.push_back(node->clone());
+            nodes.push_back(node.get());
         }
     }
     return nodes;
@@ -268,7 +269,63 @@ bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
         if (
             left && right
         ) {
-            
+            vector<ASTNode*> flatLeft = EquationSolver::flattenNode(binaryNode->getLeftRef());
+            vector<ASTNode*> flatRight = EquationSolver::flattenNode(binaryNode->getRightRef());
+            vector<ASTNode*> allNodes;
+            allNodes.insert(
+                allNodes.end(),
+                flatLeft.begin(),
+                flatLeft.end()
+            );
+            allNodes.insert(
+                allNodes.end(),
+                flatRight.begin(),
+                flatRight.end()
+            );
+            double finalResult = 0.0;
+            ASTNode* randomAtom = nullptr;
+            int cnt = 0;
+
+            for(ASTNode* & n: allNodes){
+                if (n->getNodeType() == NodeType::Atom && n->getToken().getType() == TokenType::NUMBER) {
+                    double val = std::stod(n->getToken().getValue());
+                    finalResult += val; 
+                    n->setToken(Token(TokenType::NUMBER, "0"));
+                    if (val != 0) {
+                        cnt++;
+                        if (!randomAtom) {
+                            randomAtom = n;
+                        }
+                    }
+                } else if (n->getNodeType() == NodeType::UnaryOp){
+                    UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(n);
+                    ASTNode *child = unaryNode->getOperand();
+                    if (child->getNodeType() == NodeType::Atom) {
+                        AtomNode *childAtom = static_cast<AtomNode *>(child);
+                        double value = std::stod(childAtom->getToken().getValue());
+                        if (unaryNode->getToken() == TokenType::MINUS) {
+                            finalResult -= value;
+                        } else {
+                            finalResult += value;
+                        }
+                        childAtom->setToken(Token(TokenType::NUMBER, "0"));
+                        if (value != 0) {
+                            cnt++;
+                            if (!randomAtom) {
+                                randomAtom = childAtom;
+                            }
+                        }
+                    }
+                }
+            }
+            if (randomAtom && cnt > 1) {
+                dbg(finalResult);
+                randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
+                return true;
+            }
+            if (cnt == 1){
+                randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
+            }
         }
         
         return leftChanged || rightChanged;
@@ -287,7 +344,7 @@ void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
         changed |= EquationSolver::eliminateDoubleNegatives(node);
         changed |= EquationSolver::distributeMinusUnaryInBinary(node);
         changed |= EquationSolver::removePlusUnary(node);
-        changed = EquationSolver::mergeBinaryWithRightUnary(node);
+        changed |= EquationSolver::mergeBinaryWithRightUnary(node);
         changed |= EquationSolver::distributeMultiplyBinary(node);
         changed |= EquationSolver::evaluateConstantBinary(node);
         changed |= EquationSolver::combineLikeTerms(node);
