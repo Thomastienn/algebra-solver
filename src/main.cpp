@@ -165,8 +165,26 @@ void testIsolateVariable(){
     std::cout << "Isolated x: " << isolated->toString() << "\n";
 }
 
+void testFlattenNode(){
+    std::string expr = "a + (b - 3*c)";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+
+    EquationSolver equationSolver;
+    auto nodes = equationSolver.flattenNode(root);
+    std::cout << "Flattened nodes: ";
+    for (const auto &n : nodes) {
+        std::cout << n->toString() << ", ";
+    }
+    std::cout << "\n";
+}
+
 int main (int argc, char *argv[]) {
     // testIsIsolateSide();
-    testIsolateVariable();
+    // testIsolateVariable();
+    // testSimplify();
+    testFlattenNode();
     return 0;
 }

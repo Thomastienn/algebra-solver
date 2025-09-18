@@ -190,8 +190,50 @@ bool EquationSolver::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
     }
     return false;
 }
+std::vector<std::unique_ptr<ASTNode>> EquationSolver::flattenNode(std::unique_ptr<ASTNode>& node){
+    std::vector<std::unique_ptr<ASTNode>> nodes;
+    if (node->getNodeType() == NodeType::Atom) {
+        nodes.push_back(node->clone());
+    }
+    else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        ASTNode *child = unaryNode->getOperand();
+        if (child->getNodeType() == NodeType::Atom) {
+            nodes.push_back(node->clone());
+        } else {
+            std::vector<std::unique_ptr<ASTNode>> recur = 
+                EquationSolver::flattenNode(unaryNode->getOperandRef());
+            nodes.insert(
+                nodes.end(), 
+                std::make_move_iterator(recur.begin()),
+                std::make_move_iterator(recur.end())
+            );
+        }
+        
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        TokenType opType = binaryNode->getToken().getType();
+        if (Token::isAssociative(opType)) {
+            auto leftNodes = EquationSolver::flattenNode(binaryNode->getLeftRef());
+            auto rightNodes = EquationSolver::flattenNode(binaryNode->getRightRef());
+            nodes.insert(nodes.end(), 
+                std::make_move_iterator(leftNodes.begin()), 
+                std::make_move_iterator(leftNodes.end())
+            );
+            nodes.insert(nodes.end(), 
+                std::make_move_iterator(rightNodes.begin()), 
+                std::make_move_iterator(rightNodes.end())
+            );
+        } else {
+            nodes.push_back(node->clone());
+        }
+    }
+    return nodes;
+}
 
 bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
+    // This will be run after the distribute step, 
+    // so we can assume all nodes are associative
     if (node->getNodeType() == NodeType::Atom) {
         return false;
     }
@@ -204,6 +246,7 @@ bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
         ASTNode *left = binaryNode->getLeft();
         ASTNode *right = binaryNode->getRight();
 
+        // Direct evaluation if both sides are numbers
         if (
             left && right &&
             left->getNodeType() == NodeType::Atom && right->getNodeType() == NodeType::Atom
@@ -221,6 +264,13 @@ bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                 return true;
             }
         }
+        // Flatten nested operations of the same type
+        if (
+            left && right
+        ) {
+            
+        }
+        
         return leftChanged || rightChanged;
     } else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
@@ -336,4 +386,6 @@ bool EquationSolver::containsVariable(std::unique_ptr<ASTNode>& node, const std:
     return false;   
 }
 
-std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {}
+std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {
+    return nullptr;
+}

@@ -113,3 +113,20 @@ TokenType Token::getInverseOperation(const TokenType& type) {
         default: throw std::runtime_error("Not supported");
     }
 }
+
+bool Token::isAssociative(const TokenType& type) {
+    switch(type) {
+        case PLUS:
+        case MINUS:
+            return true;
+        case MULTIPLY:
+        case DIVIDE:
+        case POWER:
+        case ASSIGN:
+        case SQRT:
+        case UNKNOWN:
+            return false;
+        default:
+            throw std::runtime_error("Token doesn't supported");
+    }
+}

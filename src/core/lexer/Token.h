@@ -46,6 +46,7 @@ public:
     static bool isOperation(const TokenType &type);
     static bool isUnaryOperation(const TokenType &type);
     static bool isAtom(const TokenType &type);
+    static bool isAssociative(const TokenType &type);
     static TokenType getInverseOperation(const TokenType &type);
 
     static std::tuple<float, float> getBindingPower(const TokenType &type);
