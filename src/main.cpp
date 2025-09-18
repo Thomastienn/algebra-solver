@@ -153,7 +153,8 @@ void testIsIsolateSide(){
 }
 
 void testIsolateVariable(){
-    std::string expr = "2*x-3=x+7*y*9";
+    // std::string expr = "2*x-3=x+7*y*9";
+    std::string expr = "(x+2)-(y-3)=2*(x+5)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = EquationSolver::normalizeEquation(parser.parse());
