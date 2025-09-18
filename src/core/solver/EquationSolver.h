@@ -35,6 +35,9 @@ private:
     /* e.g., 2*x + 3*x -> 5*x */
     static bool combineLikeTerms(std::unique_ptr<ASTNode>& node);
 
+    /* e.g., 0 + 3 -> 3*/
+    static bool removeZeroTerms(std::unique_ptr<ASTNode>& node);
+
     
     /*
     Check if the variable is isolated on one side of the equation

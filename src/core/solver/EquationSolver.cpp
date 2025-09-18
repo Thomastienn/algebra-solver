@@ -319,7 +319,6 @@ bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                 }
             }
             if (randomAtom && cnt > 1) {
-                dbg(finalResult);
                 randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
                 return true;
             }
@@ -336,6 +335,62 @@ bool EquationSolver::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+bool EquationSolver::removeZeroTerms(std::unique_ptr<ASTNode> &node) {
+    // Remove at binary level only since 
+    // Deletion at unary and atom level cause ref issues
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        return false;
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        bool leftChanged = removeZeroTerms(binaryNode->getLeftRef());
+        bool rightChanged = removeZeroTerms(binaryNode->getRightRef());
+
+        ASTNode *left = binaryNode->getLeft();
+        ASTNode *right = binaryNode->getRight();
+
+        // Remove zero terms based on the operation
+        auto removeNode = [&](bool isLeft, ASTNode* target) -> bool {
+            if (target->getNodeType() == NodeType::Atom) {
+                AtomNode *atomNode = static_cast<AtomNode *>(target);
+                if (atomNode->getToken().getType() == TokenType::NUMBER && 
+                    std::stod(atomNode->getToken().getValue()) == 0.0) {
+                    // Replace the entire binary node with the other side
+                    node = isLeft ? 
+                        std::move(binaryNode->getRightRef()) : 
+                        std::move(binaryNode->getLeftRef());
+                    return true;
+                }
+            }
+            if (target->getNodeType() == NodeType::UnaryOp) {
+                UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(target);
+                ASTNode *child = unaryNode->getOperand();
+                if (child->getNodeType() == NodeType::Atom) {
+                    AtomNode *childAtom = static_cast<AtomNode *>(child);
+                    if (childAtom->getToken().getType() == TokenType::NUMBER && 
+                        std::stod(childAtom->getToken().getValue()) == 0.0) {
+                        // Replace the entire binary node with the other side
+                        node = isLeft ? 
+                            std::move(binaryNode->getRightRef()) : 
+                            std::move(binaryNode->getLeftRef());
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        };
+
+        if (removeNode(true, left) || removeNode(false, right)) {
+            return true;
+        }
+        
+        return leftChanged || rightChanged;
+    }
+    return false;
+}
+
 void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
     bool changed;
     int iterations = 0;
@@ -348,6 +403,7 @@ void EquationSolver::simplify(std::unique_ptr<ASTNode> &node) {
         changed |= EquationSolver::distributeMultiplyBinary(node);
         changed |= EquationSolver::evaluateConstantBinary(node);
         changed |= EquationSolver::combineLikeTerms(node);
+        changed |= EquationSolver::removeZeroTerms(node);
 
         iterations++;
     } while (changed);
