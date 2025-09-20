@@ -49,6 +49,9 @@ public:
     static bool isAssociative(const TokenType &type);
     static TokenType getInverseOperation(const TokenType &type);
 
+    /* Merge +, -, Return unary token */
+    static TokenType mergeUnaryToken(const TokenType &unary1, const TokenType &unary2);
+
     static std::tuple<float, float> getBindingPower(const TokenType &type);
 
 private:

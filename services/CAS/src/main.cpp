@@ -87,7 +87,8 @@ void testSimplify() {
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    EquationSolver::simplify(root);
+    Simplifier x;
+    x.simplify(root);
     std::cout << "Simplified: " << root->toString() << "\n";
 }
 
@@ -107,8 +108,8 @@ void testEvaluateConstantBinary(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    EquationSolver equationSolver;
-    equationSolver.evaluateConstantBinary(root);
+    Simplifier x;
+    x.evaluateConstantBinary(root);
     std::cout << "Evaluated: " << root->toString() << "\n";
 }
 
@@ -118,8 +119,8 @@ void testDistributeMultiplyBinary(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    EquationSolver equationSolver;
-    equationSolver.distributeMultiplyBinary(root);
+    Simplifier x;
+    x.distributeMultiplyBinary(root);
     std::cout << "Distributed: " << root->toString() << "\n";
 }
 
@@ -172,8 +173,8 @@ void testFlattenNode(){
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
 
-    EquationSolver equationSolver;
-    auto nodes = equationSolver.flattenNode(root);
+    Simplifier x;
+    auto nodes = x.flattenNode(root);
     std::cout << "Flattened nodes: \n";
     for (const auto &n : nodes) {
         std::cout << " - " << n->toString() << "\n";

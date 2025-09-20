@@ -130,3 +130,10 @@ bool Token::isAssociative(const TokenType& type) {
             throw std::runtime_error("Token doesn't supported");
     }
 }
+
+TokenType Token::mergeUnaryToken(const TokenType &unary1, const TokenType &unary2) {
+    int numMinus = 
+        (unary1 == TokenType::MINUS) +
+        (unary2 == TokenType::MINUS);
+    return (numMinus % 2 == 0) ? TokenType::PLUS : TokenType::MINUS;
+}

@@ -13,6 +13,7 @@ add_executable(AlgebraSolver
     src/core/parser/Parser.cpp
     src/core/solver/Evaluation.cpp
     src/core/solver/EquationSolver.cpp
+    src/core/solver/Simplifier.cpp
     src/utils/Math.cpp
 )
 
