@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include "network/SocketClient.h"
 
 void testLexer() {
     std::string sample = "(3 + 2) * 1";
@@ -181,7 +182,62 @@ void testFlattenNode(){
     }
 }
 
+void parseArgs(int argc, char *argv[]) {
+    SocketClient client;
+    std::string host = "";
+    int port = -1;
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--help" || arg == "-h") {
+            std::cout << "Usage: " << argv[0] << " [options]\n";
+            std::cout << "Options:\n";
+            std::cout << "  --help, -h       Show this help message\n";
+            std::cout << "  --version, -v    Show version information\n";
+            exit(0);
+        } else if (arg == "--version" || arg == "-v") {
+            std::cout << argv[0] << " version 1.0.0\n";
+            exit(0);
+        } else if (arg == "--host") {
+            if (i + 1 < argc) {
+                host = argv[++i];
+            } else {
+                std::cerr << "--host requires an argument\n";
+                exit(1);
+            }
+        } else if (arg == "--port") {
+            if (i + 1 < argc) {
+                port = std::stoi(argv[++i]);
+            } else {
+                std::cerr << "--port requires an argument\n";
+                exit(1);
+            }
+        } else {
+            std::cerr << "Unknown argument: " << arg << "\n";
+            exit(1);
+        }
+    }
+    if (!host.empty() && port != -1) {
+        client.setHost(host);
+        client.setPort(port);
+        if (client.connectToServer()) {
+            std::cout << "Connected to " << host << ":" << port << "\n";
+        } else {
+            std::cerr << "Failed to connect to " << host << ":" << port << "\n";
+        }
+    } else {
+        std::cout << "No host and port provided, running in local mode.\n";
+    }
+
+    // Running processes...
+    //
+
+    client.disconnect();
+}
+
 int main (int argc, char *argv[]) {
+    // parseArgs(argc, argv);
+
     // testIsIsolateSide();
     // testIsolateVariable();
     testSimplify();
