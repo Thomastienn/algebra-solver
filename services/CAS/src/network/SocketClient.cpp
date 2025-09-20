@@ -63,3 +63,24 @@ bool SocketClient::sendMessage(const std::string& message) {
 
     return true;
 }
+
+std::string SocketClient::receiveMessage() {
+    if (!SocketClient::connected) {
+        std::cerr << "Not connected to server.\n";
+        return "";
+    }
+
+    char buffer[1024];
+    ssize_t bytes_received = recv(SocketClient::sockfd, buffer, sizeof(buffer) - 1, 0);
+    if (bytes_received < 0) {
+        std::cerr << "Error receiving message.\n";
+        return "";
+    } else if (bytes_received == 0) {
+        std::cerr << "Connection closed by server.\n";
+        disconnect();
+        return "";
+    }
+
+    buffer[bytes_received] = '\0';
+    return std::string(buffer);
+}

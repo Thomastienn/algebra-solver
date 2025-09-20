@@ -235,12 +235,40 @@ void parseArgs(int argc, char *argv[]) {
     client.disconnect();
 }
 
+void testSocketClient() {
+    SocketClient client("127.0.0.1", 8080);
+    if (client.connectToServer()) {
+        while(true) {
+            std::string input;
+            std::cout << "Enter message (type 'exit' to quit): ";
+            std::getline(std::cin, input);
+            if (input == "exit") {
+                client.sendMessage("disconnect");
+                client.disconnect();
+                break;
+            }
+            client.sendMessage(input);
+            std::string response = client.receiveMessage();
+            if (response == "disconnect"){
+                std::cout << "Server requested disconnection. Exiting...\n";
+                client.disconnect();
+                break;
+            }
+            std::cout << "Server response: " << response << "\n";
+        }
+    } else {
+        std::cout << "Failed to connect to server\n";
+    }
+}
+
 int main (int argc, char *argv[]) {
     // parseArgs(argc, argv);
 
     // testIsIsolateSide();
     // testIsolateVariable();
-    testSimplify();
+    // testSimplify();
     // testFlattenNode();
+
+    testSocketClient();
     return 0;
 }

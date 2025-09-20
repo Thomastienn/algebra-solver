@@ -18,4 +18,5 @@ public:
     bool connectToServer();
     void disconnect();
     bool sendMessage(const std::string& message);
+    std::string receiveMessage();
 };
