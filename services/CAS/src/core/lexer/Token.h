@@ -39,6 +39,13 @@ public:
     TokenType getType() const { return type; }
     const std::string &getValue() const { return value; }
 
+    static double getNumericValue(const Token &token) {
+        if (token.getType() != NUMBER) {
+            throw std::runtime_error("Token is not a number");
+        }
+        return std::stod(token.getValue());
+    }
+
     static char operationToChr(const TokenType &op);
     static TokenType chrToOperation(const char &op);
 
@@ -46,7 +53,7 @@ public:
     static bool isOperation(const TokenType &type);
     static bool isUnaryOperation(const TokenType &type);
     static bool isAtom(const TokenType &type);
-    static bool isAssociative(const TokenType &type);
+    static bool isAdditive(const TokenType &type);
     static TokenType getInverseOperation(const TokenType &type);
 
     /* Merge +, -, Return unary token */

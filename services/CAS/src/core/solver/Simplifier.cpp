@@ -29,7 +29,7 @@ std::vector<ASTNode*> Simplifier::flattenNode(std::unique_ptr<ASTNode>& node){
     } else if (node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
         TokenType opType = binaryNode->getToken().getType();
-        if (Token::isAssociative(opType)) {
+        if (Token::isAdditive(opType)) {
             auto leftNodes = Simplifier::flattenNode(binaryNode->getLeftRef());
             auto rightNodes = Simplifier::flattenNode(binaryNode->getRightRef());
             nodes.insert(nodes.end(), 
@@ -224,6 +224,10 @@ bool Simplifier::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+// WARNING: This function can makes Unary(MINUS, Atom(number)) into Atom(-number)
+// Which can cause issues in other simplification steps
+// So it must use seperateIntoUnary to fix it afterwards
+// Will be fixed in the future
 bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
     // This will be run after the distribute step, 
     // so we can assume all nodes are associative
@@ -246,7 +250,10 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
         ) {
             AtomNode *leftAtom = static_cast<AtomNode *>(left);
             AtomNode *rightAtom = static_cast<AtomNode *>(right);
-            if (leftAtom->getToken().getType() == TokenType::NUMBER && rightAtom->getToken().getType() == TokenType::NUMBER) {
+            if (
+                leftAtom->getToken().getType() == TokenType::NUMBER && 
+                rightAtom->getToken().getType() == TokenType::NUMBER
+            ) {
                 // Both sides are numbers, perform the operation
                 double result = Evaluation::evaluateExpression(
                     leftAtom->getToken(), 
@@ -258,9 +265,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             }
         }
         // Flatten nested operations of the same type
-        if (
-            left && right
-        ) {
+        if (left && right) {
             std::vector<ASTNode*> flatLeft = Simplifier::flattenNode(binaryNode->getLeftRef());
             std::vector<ASTNode*> flatRight = Simplifier::flattenNode(binaryNode->getRightRef());
             std::vector<ASTNode*> allNodes;
@@ -272,8 +277,11 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             
             auto sumUp = [&](std::vector<ASTNode*> &nodes, bool negate){
                 for(ASTNode* & n: nodes){
-                    if (n->getNodeType() == NodeType::Atom && n->getToken().getType() == TokenType::NUMBER) {
-                        double val = std::stod(n->getToken().getValue());
+                    if (
+                        n->getNodeType() == NodeType::Atom && 
+                        n->getToken().getType() == TokenType::NUMBER
+                    ) {
+                        double val = Token::getNumericValue(n->getToken());
                         finalResult += negate ? -val : val; 
                         n->setToken(Token(TokenType::NUMBER, "0"));
                         if (val != 0) {
@@ -288,7 +296,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                         ASTNode *child = unaryNode->getOperand();
                         if (child->getNodeType() == NodeType::Atom) {
                             AtomNode *childAtom = static_cast<AtomNode *>(child);
-                            double val = std::stod(childAtom->getToken().getValue());
+                            double val = Token::getNumericValue(childAtom->getToken());
                             val = negate ? -val : val;
                             if (unaryNode->getToken() == TokenType::MINUS) {
                                 finalResult -= val;
@@ -317,6 +325,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                 finalResult = -finalResult;
             }
 
+            // If there is more than 2 constants, we just replace one of them
             if (randomAtom && cnt > 1) {
                 randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
                 return true;
@@ -324,6 +333,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
 
             // Currently just let the minus inside the atom 
             // It will be handled in the next step anyways
+            // cnt == 1 means only have one constant, so we apply back again
             if (cnt == 1){
                 randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
             }
@@ -362,7 +372,7 @@ bool Simplifier::removeZeroTerms(std::unique_ptr<ASTNode> &node) {
             if (target->getNodeType() == NodeType::Atom) {
                 AtomNode *atomNode = static_cast<AtomNode *>(target);
                 if (atomNode->getToken().getType() == TokenType::NUMBER && 
-                    std::stod(atomNode->getToken().getValue()) == 0.0) {
+                    Token::getNumericValue(atomNode->getToken()) == 0.0) {
                     // Replace the entire binary node with the other side
                     node = isLeft ? 
                         std::move(binaryNode->getRightRef()) : 
@@ -376,7 +386,7 @@ bool Simplifier::removeZeroTerms(std::unique_ptr<ASTNode> &node) {
                 if (child->getNodeType() == NodeType::Atom) {
                     AtomNode *childAtom = static_cast<AtomNode *>(child);
                     if (childAtom->getToken().getType() == TokenType::NUMBER && 
-                        std::stod(childAtom->getToken().getValue()) == 0.0) {
+                        Token::getNumericValue(childAtom->getToken()) == 0.0) {
                         // Replace the entire binary node with the other side
                         node = isLeft ? 
                             std::move(binaryNode->getRightRef()) : 
@@ -402,7 +412,7 @@ bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
     if (node->getNodeType() == NodeType::Atom) {
         AtomNode *atomNode = static_cast<AtomNode *>(node.get());
         if (atomNode->getToken().getType() == TokenType::NUMBER) {
-            double val = std::stod(atomNode->getToken().getValue());
+            double val = Token::getNumericValue(atomNode->getToken());
             if (val < 0) {
                 // Convert negative number to unary operation
                 node = std::make_unique<UnaryOpNode>(
@@ -426,6 +436,63 @@ bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
 }
 
 bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
+    if (node->getNodeType() == NodeType::Atom) {
+        return false;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return Simplifier::combineLikeTerms(unaryNode->getOperandRef());
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        bool leftChanged = Simplifier::combineLikeTerms(binaryNode->getLeftRef());
+        bool rightChanged = Simplifier::combineLikeTerms(binaryNode->getRightRef());
+
+        if (binaryNode->getToken() == TokenType::MULTIPLY){
+            ASTNode *left = binaryNode->getLeft();
+            ASTNode *right = binaryNode->getRight();
+
+            // Check if one side is a number and the other is a variable
+            auto isNumber = [](ASTNode *n) -> bool {
+                if (n->getNodeType() == NodeType::Atom) {
+                    AtomNode *atomNode = static_cast<AtomNode *>(n);
+                    return atomNode->getToken().getType() == TokenType::NUMBER;
+                }
+                return false;
+            };
+
+            // It could be nested term like 
+            // 3 * (x ^ 2) -> So the term is x^2
+
+            std::unordered_map<std::string, double> termMap; // term string -> coefficient
+            std::unordered_map<std::string, ASTNode*> termNodes; // term string -> representative node
+            //
+            
+            auto getTerm = [&](ASTNode* numSide, ASTNode* termSide) -> bool {
+                if (!isNumber(numSide)) return false;
+                if (isNumber(termSide)) return false;
+
+                std::string termStr = termSide->toString();
+                AtomNode *numNode = static_cast<AtomNode *>(numSide);
+                double coefficient = Token::getNumericValue(numNode->getToken());
+
+                termMap[termStr] += coefficient;
+                termNodes[termStr] = numSide;
+                return true;
+            };
+
+            bool leftGetTerm = getTerm(left, right);
+            bool rightGetTerm = getTerm(right, left);
+
+            if (leftGetTerm || rightGetTerm) {
+                // We have combined terms, now reconstruct the node
+                // Get a random node for each term
+                // Assign the result to it
+                // Other nodes of that same term will be replaced with 0
+                // So it will be clean up later
+            }
+        }
+
+        return leftChanged || rightChanged;
+    }
     return false;
 }
 

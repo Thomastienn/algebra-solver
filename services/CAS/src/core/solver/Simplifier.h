@@ -28,7 +28,10 @@ private:
     /* e.g., 2 + 3 -> 5 */
     static bool evaluateConstantBinary(std::unique_ptr<ASTNode>& node);
 
-    /* e.g., 2*x + 3*x -> 5*x */
+    /* 
+    e.g.,   2*x + 3*x -> 5*x 
+            3*y^2 - y^2 -> 2*y^2
+    */
     static bool combineLikeTerms(std::unique_ptr<ASTNode>& node);
 
     /* e.g., 0 + 3 -> 3*/

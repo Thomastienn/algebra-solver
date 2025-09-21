@@ -17,6 +17,9 @@ public:
     ASTNode() : token(Token(UNKNOWN, "")) {}
     ASTNode(Token token, NodeType type) : token(token), type(type) {}
     virtual ~ASTNode() = default;
+    virtual bool operator==(const ASTNode &other) const {
+        return this->getToken() == other.getToken() && this->getNodeType() == other.getNodeType();
+    }
 
     Token getToken() const { return token; }
     NodeType getNodeType() const { return type; }
@@ -31,6 +34,10 @@ public:
 class AtomNode : public ASTNode {
 public:
     AtomNode(Token token) : ASTNode(token, NodeType::Atom) {}
+    bool operator==(const ASTNode &other) const override {
+        if (other.getNodeType() != NodeType::Atom) return false;
+        return this->getToken() == other.getToken();
+    }
 
     std::string toString() override {
         return getToken().getValue();
@@ -52,6 +59,13 @@ public:
         if (!Token::isOperation(op.getType())) {
             throw std::runtime_error("BinaryOpNode requires an operation token");
         }
+    }
+    bool operator==(const ASTNode &other) const override {
+        if (other.getNodeType() != NodeType::BinaryOp) return false;
+        const BinaryOpNode &o = static_cast<const BinaryOpNode &>(other);
+        return this->getToken() == o.getToken() &&
+               *(this->left) == *(o.left) &&
+               *(this->right) == *(o.right);
     }
 
     ASTNode *getLeft() const { return left.get(); }
@@ -92,6 +106,12 @@ public:
         if (!Token::isUnaryOperation(op.getType())) {
             throw std::runtime_error("UnaryOpNode requires a unary operation token");
         }
+    }
+    bool operator==(const ASTNode &other) const override {
+        if (other.getNodeType() != NodeType::UnaryOp) return false;
+        const UnaryOpNode &o = static_cast<const UnaryOpNode &>(other);
+        return this->getToken() == o.getToken() &&
+               *(this->operand) == *(o.operand);
     }
 
     ASTNode *getOperand() const { return operand.get(); }

@@ -119,7 +119,7 @@ void testEvaluateConstantBinary(){
 }
 
 void testDistributeMultiplyBinary(){
-    std::string expr = "(3 + x) * 3";
+    std::string expr = "3*(2*(x+1))";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -265,6 +265,17 @@ void testSocketClient() {
     }
 }
 
+void testCombineLikeTerms(){
+    std::string expr = "2*x + 3*x - y + 4 - 1 + y - 2 + 3";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    Simplifier x;
+    x.combineLikeTerms(root);
+    std::cout << "Combined: " << root->toString() << "\n";
+}
+
 int main (int argc, char *argv[]) {
     // parseArgs(argc, argv);
 
@@ -274,6 +285,8 @@ int main (int argc, char *argv[]) {
     // testNormalize();
     // testFlattenNode();
 
+    // testCombineLikeTerms();
+    // testDistributeMultiplyBinary();
     // testSocketClient();
     return 0;
 }

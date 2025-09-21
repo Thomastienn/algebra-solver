@@ -114,7 +114,7 @@ TokenType Token::getInverseOperation(const TokenType& type) {
     }
 }
 
-bool Token::isAssociative(const TokenType& type) {
+bool Token::isAdditive(const TokenType& type) {
     switch(type) {
         case PLUS:
         case MINUS:
