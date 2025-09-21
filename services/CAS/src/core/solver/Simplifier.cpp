@@ -435,9 +435,10 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
     struct Step {
         const char* name;
         bool result;
+        std::string nodeStr;
         std::function<bool()> func;
 
-        Step(const char* n, std::function<bool()> f) : name(n), func(std::move(f)), result(false) {}
+        Step(const char* n, std::function<bool()> f) : name(n), func(std::move(f)), result(false), nodeStr(""){}
     };
 
     auto padRight = [](const std::string &s, size_t width) -> std::string {
@@ -452,37 +453,40 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
     do {
         changed = false;
         std::vector<Step> steps = {
-            STEP(eliminateDoubleNegatives),
-            STEP(distributeMinusUnaryInBinary),
-            STEP(removePlusUnary),
-            STEP(mergeBinaryWithRightUnary),
-            STEP(distributeMultiplyBinary),
-            STEP(evaluateConstantBinary),
-            STEP(seperateIntoUnary),
-            STEP(combineLikeTerms),
-            STEP(removeZeroTerms)
+            STEP(Simplifier::eliminateDoubleNegatives),
+            STEP(Simplifier::distributeMinusUnaryInBinary),
+            STEP(Simplifier::removePlusUnary),
+            STEP(Simplifier::mergeBinaryWithRightUnary),
+            STEP(Simplifier::distributeMultiplyBinary),
+            STEP(Simplifier::evaluateConstantBinary),
+            STEP(Simplifier::seperateIntoUnary),
+            STEP(Simplifier::combineLikeTerms),
+            STEP(Simplifier::removeZeroTerms)
         };
 
         // aggregate overall change
         for (auto &s : steps) {
             s.result = s.func();
             changed |= s.result;
+            s.nodeStr = node->toString();
         }
 
         const size_t nameWidth = 30;
         const size_t changedWidth = 7;
+        const size_t nodeStrWidth = 50;
         std::string table;
         table += "Iteration " + std::to_string(iterations) + ":\n";
-        table += "+-------------------------------+---------+\n";
-        table += "| Step                          | Changed |\n";
-        table += "+-------------------------------+---------+\n";
+        table += "+-------------------------------+---------+------------------\n";
+        table += "| Step                          | Changed | Node\n";
+        table += "+-------------------------------+---------+------------------\n";
         for (auto &s : steps) {
             std::string name = padRight(s.name, nameWidth);
             std::string changedStr = s.result ? GREEN + "true" + RESET : RED + "false" + RESET;
             std::string changedField = std::string(std::max<int>((int)changedWidth - 4, 0), ' ') + changedStr;
-            table += "| " + name + " | " + changedField + " |\n";
+            std::string nodeStr = padRight(s.nodeStr, nodeStrWidth);
+            table += "| " + name + " | " + changedField + " | " + nodeStr + "\n";
         }
-        table += "+-------------------------------+---------+\n";
+        table += "+-------------------------------+---------+------------------\n";
         table += "Result: " + node->toString() + "\n";
 
         if (debug) dbg(table);  // send the table to your debug macro
