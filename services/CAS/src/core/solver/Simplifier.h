@@ -35,7 +35,10 @@ private:
     static bool removeZeroTerms(std::unique_ptr<ASTNode>& node);
 
     /* Merge AST node like this: +(-x) -> -x or -(-x) -> +x */
-    static void mergeUnaryIntoBinary(std::unique_ptr<ASTNode>& node);
+    // static void mergeUnaryIntoBinary(std::unique_ptr<ASTNode>& node);
+
+    /* Atom(Number, -1) -> UnaryOp(-, Atom(Number, 1)) */
+    static bool seperateIntoUnary(std::unique_ptr<ASTNode>& node);
 
     /*
     Flatten tree structure for associative operations
@@ -48,5 +51,5 @@ private:
 public:
     Simplifier(){};
 
-    static void simplify(std::unique_ptr<ASTNode>& node);
+    static void simplify(std::unique_ptr<ASTNode>& node, bool debug=false);
 };

@@ -1,4 +1,10 @@
 #include "Simplifier.h"
+#include "../../utils/Debug.h"
+#include <functional>
+#include <iomanip>
+
+#define STEP(fn) {#fn, [&]{ return Simplifier::fn(node); }}
+
 
 std::vector<ASTNode*> Simplifier::flattenNode(std::unique_ptr<ASTNode>& node){
     std::vector<ASTNode*> nodes;
@@ -258,56 +264,64 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             std::vector<ASTNode*> flatLeft = Simplifier::flattenNode(binaryNode->getLeftRef());
             std::vector<ASTNode*> flatRight = Simplifier::flattenNode(binaryNode->getRightRef());
             std::vector<ASTNode*> allNodes;
-            allNodes.insert(
-                allNodes.end(),
-                flatLeft.begin(),
-                flatLeft.end()
-            );
-            allNodes.insert(
-                allNodes.end(),
-                flatRight.begin(),
-                flatRight.end()
-            );
+
             double finalResult = 0.0;
             ASTNode* randomAtom = nullptr;
             int cnt = 0;
-
-            for(ASTNode* & n: allNodes){
-                if (n->getNodeType() == NodeType::Atom && n->getToken().getType() == TokenType::NUMBER) {
-                    double val = std::stod(n->getToken().getValue());
-                    finalResult += val; 
-                    n->setToken(Token(TokenType::NUMBER, "0"));
-                    if (val != 0) {
-                        cnt++;
-                        if (!randomAtom) {
-                            randomAtom = n;
-                        }
-                    }
-                } else if (n->getNodeType() == NodeType::UnaryOp){
-                    UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(n);
-                    ASTNode *child = unaryNode->getOperand();
-                    if (child->getNodeType() == NodeType::Atom) {
-                        AtomNode *childAtom = static_cast<AtomNode *>(child);
-                        double value = std::stod(childAtom->getToken().getValue());
-                        if (unaryNode->getToken() == TokenType::MINUS) {
-                            finalResult -= value;
-                        } else {
-                            finalResult += value;
-                        }
-                        childAtom->setToken(Token(TokenType::NUMBER, "0"));
-                        if (value != 0) {
+            bool randomAtomNegate = false;
+            
+            auto sumUp = [&](std::vector<ASTNode*> &nodes, bool negate){
+                for(ASTNode* & n: nodes){
+                    if (n->getNodeType() == NodeType::Atom && n->getToken().getType() == TokenType::NUMBER) {
+                        double val = std::stod(n->getToken().getValue());
+                        finalResult += negate ? -val : val; 
+                        n->setToken(Token(TokenType::NUMBER, "0"));
+                        if (val != 0) {
                             cnt++;
                             if (!randomAtom) {
-                                randomAtom = childAtom;
+                                randomAtom = n;
+                                randomAtomNegate = negate;
+                            }
+                        }
+                    } else if (n->getNodeType() == NodeType::UnaryOp){
+                        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(n);
+                        ASTNode *child = unaryNode->getOperand();
+                        if (child->getNodeType() == NodeType::Atom) {
+                            AtomNode *childAtom = static_cast<AtomNode *>(child);
+                            double val = std::stod(childAtom->getToken().getValue());
+                            val = negate ? -val : val;
+                            if (unaryNode->getToken() == TokenType::MINUS) {
+                                finalResult -= val;
+                            } else {
+                                finalResult += val;
+                            }
+                            childAtom->setToken(Token(TokenType::NUMBER, "0"));
+                            if (val != 0) {
+                                cnt++;
+                                if (!randomAtom) {
+                                    randomAtom = childAtom;
+                                    randomAtomNegate = negate;
+                                }
                             }
                         }
                     }
                 }
+            };
+            sumUp(flatLeft, false);
+            sumUp(flatRight, binaryNode->getToken() == TokenType::ASSIGN);
+
+            // The right is already negated
+            // So if we fixed the node on the negated side
+            // We have to convert it back
+            if (randomAtomNegate){
+                finalResult = -finalResult;
             }
+
             if (randomAtom && cnt > 1) {
                 randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
                 return true;
             }
+
             if (cnt == 1){
                 randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
             }
@@ -332,6 +346,11 @@ bool Simplifier::removeZeroTerms(std::unique_ptr<ASTNode> &node) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
         bool leftChanged = removeZeroTerms(binaryNode->getLeftRef());
         bool rightChanged = removeZeroTerms(binaryNode->getRightRef());
+
+        // Do not remove anything in assignment
+        if(binaryNode->getToken() == TokenType::ASSIGN){
+            return leftChanged || rightChanged;
+        }
 
         ASTNode *left = binaryNode->getLeft();
         ASTNode *right = binaryNode->getRight();
@@ -377,26 +396,98 @@ bool Simplifier::removeZeroTerms(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
+        if (atomNode->getToken().getType() == TokenType::NUMBER) {
+            double val = std::stod(atomNode->getToken().getValue());
+            if (val < 0) {
+                // Convert negative number to unary operation
+                node = std::make_unique<UnaryOpNode>(
+                    Token(TokenType::MINUS, "-"), 
+                    std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-val)))
+                );
+                return true;
+            }
+        }
+        return false;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return seperateIntoUnary(unaryNode->getOperandRef());
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        bool leftChanged = seperateIntoUnary(binaryNode->getLeftRef());
+        bool rightChanged = seperateIntoUnary(binaryNode->getRightRef());
+        return leftChanged || rightChanged;
+    }
+    return false;
+}
+
 bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     // TODO
     return false;
 }
 
-void Simplifier::simplify(std::unique_ptr<ASTNode> &node) {
+void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
     bool changed;
     int iterations = 0;
+
+    struct Step {
+        const char* name;
+        bool result;
+        std::function<bool()> func;
+
+        Step(const char* n, std::function<bool()> f) : name(n), func(std::move(f)), result(false) {}
+    };
+
+    auto padRight = [](const std::string &s, size_t width) -> std::string {
+        if (s.size() >= width) return s.substr(0, width);
+        return s + std::string(width - s.size(), ' ');
+    };
+    const std::string GREEN = "\033[32m";
+    const std::string RED   = "\033[31m";
+    const std::string RESET = "\033[0m";
+
+
     do {
         changed = false;
-        changed |= Simplifier::eliminateDoubleNegatives(node);
-        changed |= Simplifier::distributeMinusUnaryInBinary(node);
-        changed |= Simplifier::removePlusUnary(node);
-        changed |= Simplifier::mergeBinaryWithRightUnary(node);
-        changed |= Simplifier::distributeMultiplyBinary(node);
-        changed |= Simplifier::evaluateConstantBinary(node);
-        changed |= Simplifier::combineLikeTerms(node);
-        changed |= Simplifier::removeZeroTerms(node);
+        std::vector<Step> steps = {
+            STEP(eliminateDoubleNegatives),
+            STEP(distributeMinusUnaryInBinary),
+            STEP(removePlusUnary),
+            STEP(mergeBinaryWithRightUnary),
+            STEP(distributeMultiplyBinary),
+            STEP(evaluateConstantBinary),
+            STEP(seperateIntoUnary),
+            STEP(combineLikeTerms),
+            STEP(removeZeroTerms)
+        };
+
+        // aggregate overall change
+        for (auto &s : steps) {
+            s.result = s.func();
+            changed |= s.result;
+        }
+
+        const size_t nameWidth = 30;
+        const size_t changedWidth = 7;
+        std::string table;
+        table += "Iteration " + std::to_string(iterations) + ":\n";
+        table += "+-------------------------------+---------+\n";
+        table += "| Step                          | Changed |\n";
+        table += "+-------------------------------+---------+\n";
+        for (auto &s : steps) {
+            std::string name = padRight(s.name, nameWidth);
+            std::string changedStr = s.result ? GREEN + "true" + RESET : RED + "false" + RESET;
+            std::string changedField = std::string(std::max<int>((int)changedWidth - 4, 0), ' ') + changedStr;
+            table += "| " + name + " | " + changedField + " |\n";
+        }
+        table += "+-------------------------------+---------+\n";
+        table += "Result: " + node->toString() + "\n";
+
+        if (debug) dbg(table);  // send the table to your debug macro
+        
 
         iterations++;
     } while (changed);
 }
-

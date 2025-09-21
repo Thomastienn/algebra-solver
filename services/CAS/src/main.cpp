@@ -82,14 +82,14 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "2 + 3 * (4 - 1)-4*(a-2)";
+    std::string expr = "x+3=4";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
     Simplifier x;
-    x.simplify(root);
+    x.simplify(root, true);
     std::cout << "Simplified: " << root->toString() << "\n";
 }
 
@@ -266,9 +266,9 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolateVariable();
-    // testSimplify();
+    testSimplify();
     // testFlattenNode();
 
-    testSocketClient();
+    // testSocketClient();
     return 0;
 }
