@@ -3,7 +3,7 @@
 #include <memory>
 #include <unordered_set>
 #include "../../utils/Debug.h"
-#include "Simplifier.h"
+#include "Evaluation.h"
 
 class EquationSolver {
 private:
@@ -21,6 +21,12 @@ private:
     */
     static bool containsVariable(std::unique_ptr<ASTNode>& node, const std::string& variable);
 
+
+    /*
+     a * constant -> constant * a
+    */
+    static void reorderConstants(std::unique_ptr<ASTNode>& node);
+
 public:
     EquationSolver(): equations(std::vector<std::unique_ptr<ASTNode>>()) {};
     EquationSolver(std::vector<std::unique_ptr<ASTNode>> eqs): equations(std::move(eqs)) {};
@@ -29,7 +35,10 @@ public:
     /* List of variables that this variable depends on */
     static std::unordered_set<Token> dependencies(const Token &variable, std::unique_ptr<ASTNode> equation);
 
-    /* LHS = RHS -> LHS - RHS = 0 */
+    /* 
+     * LHS = RHS -> LHS - RHS = 0 
+     * a * constant -> constant * a
+    */
     static std::unique_ptr<ASTNode> normalizeEquation(std::unique_ptr<ASTNode> equation);
     
     /* Isolate variable on LHS, e.g., 2*x + 3 = 7y -> x = (7y - 3) / 2 */

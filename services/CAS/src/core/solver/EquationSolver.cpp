@@ -7,6 +7,37 @@ void EquationSolver::addEquation(std::unique_ptr<ASTNode> equation) {
     equations.push_back(std::move(equation)); 
 }
 
+void EquationSolver::reorderConstants(std::unique_ptr<ASTNode>& node) {
+    if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        TokenType opType = binaryNode->getToken().getType();
+
+        if (opType == TokenType::MULTIPLY) {
+            ASTNode *left = binaryNode->getLeft();
+            ASTNode *right = binaryNode->getRight();
+            if (!left || !right) {
+                std::cerr << "Corrupted child detected!" << std::endl;
+                return;
+            }
+
+            bool leftIsConst = left->getNodeType() == NodeType::Atom && 
+                static_cast<AtomNode *>(left)->getToken().getType() == TokenType::NUMBER;
+            bool rightIsConst = right->getNodeType() == NodeType::Atom && 
+                static_cast<AtomNode *>(right)->getToken().getType() == TokenType::NUMBER;
+
+            if (!leftIsConst && rightIsConst) {
+                std::swap(binaryNode->getLeftRef(), binaryNode->getRightRef());
+            }
+        }
+
+        reorderConstants(binaryNode->getLeftRef());
+        reorderConstants(binaryNode->getRightRef());
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        reorderConstants(unaryNode->getOperandRef());
+    }
+}
+
 std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNode> equation) {
     if (equation->getNodeType() != NodeType::BinaryOp || equation->getToken() != TokenType::ASSIGN) {
         throw std::runtime_error("Equation must be an assignment (LHS = RHS)");
@@ -26,8 +57,10 @@ std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNo
         std::move(newLHS), 
         std::move(zeroNode)
     );
-    Simplifier::simplify(newEquation->getLeftRef());
-    return newEquation;
+
+    unique_ptr<ASTNode> baseEquation = std::move(newEquation);
+    EquationSolver::reorderConstants(baseEquation);
+    return baseEquation;
 }
 
 std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, std::unique_ptr<ASTNode> equation) {

@@ -1,7 +1,7 @@
 #include "Simplifier.h"
 #include "../../utils/Debug.h"
 #include <functional>
-#include <iomanip>
+#include <sstream>
 
 #define STEP(fn) {#fn, [&]{ return Simplifier::fn(node); }}
 
@@ -426,7 +426,6 @@ bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
 }
 
 bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
-    // TODO
     return false;
 }
 
@@ -454,6 +453,9 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
 
     do {
         changed = false;
+
+        // The order matter performance (or even correctness)
+        // So be careful when changing the order
         std::vector<Step> steps = {
             STEP(Simplifier::eliminateDoubleNegatives),
             STEP(Simplifier::distributeMinusUnaryInBinary),

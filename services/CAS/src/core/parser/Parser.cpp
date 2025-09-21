@@ -23,8 +23,16 @@ std::unique_ptr<ASTNode> Parser::parse(float cur_bp) {
 
     while (true) {
         token = lexer->peekNextToken();
+        bool implicitMultiply = false;
         if (!Token::isOperation(token.getType())) {
-            break;
+            if (Token::isAtom(token.getType()) ||
+                token.getType() == TokenType::LPARAN
+            ) {
+                token = Token(TokenType::MULTIPLY, "*");
+                implicitMultiply = true;
+            } else {
+                break;
+            }
         }
         if (token.getType() == TokenType::END) {
             break;
@@ -37,7 +45,11 @@ std::unique_ptr<ASTNode> Parser::parse(float cur_bp) {
         if (left_bp < cur_bp) {
             break;
         }
-        lexer->getNextToken(); // consume the operator
+        if (implicitMultiply) {
+            // Do not consume the token, as it's not actually there
+        } else {
+            lexer->getNextToken(); // consume the operator
+        }
 
         std::unique_ptr<ASTNode> right = parse(right_bp);
         left = std::make_unique<BinaryOpNode>(token, std::move(left), std::move(right));

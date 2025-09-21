@@ -1,5 +1,6 @@
 #define private public
 #include "core/solver/EquationSolver.h"
+#include "core/solver/Simplifier.h"
 #undef private
 
 #include <iostream>
@@ -82,19 +83,22 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "-1--(-+x)";
+    std::string expr = "-1--(-+x)=y";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
+    EquationSolver equationSolver;
     Simplifier x;
+
+    std::unique_ptr<ASTNode> normalized = EquationSolver::normalizeEquation(std::move(root));
     x.simplify(root, true);
     std::cout << "Simplified: " << root->toString() << "\n";
 }
 
 void testNormalize() {
-    std::string expr = "3+y = 2 - (x + 5)";
+    std::string expr = "3+2*y = 2 - (x*4 + 5)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -267,6 +271,7 @@ int main (int argc, char *argv[]) {
     // testIsIsolateSide();
     // testIsolateVariable();
     testSimplify();
+    // testNormalize();
     // testFlattenNode();
 
     // testSocketClient();
