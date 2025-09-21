@@ -82,7 +82,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "4=1+x";
+    std::string expr = "-1--(-+x)";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));

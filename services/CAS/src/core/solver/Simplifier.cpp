@@ -233,8 +233,8 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
     if (node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
 
-        bool leftChanged = evaluateConstantBinary(binaryNode->getLeftRef());
-        bool rightChanged = evaluateConstantBinary(binaryNode->getRightRef());
+        bool leftChanged = Simplifier::evaluateConstantBinary(binaryNode->getLeftRef());
+        bool rightChanged = Simplifier::evaluateConstantBinary(binaryNode->getRightRef());
 
         ASTNode *left = binaryNode->getLeft();
         ASTNode *right = binaryNode->getRight();
@@ -322,6 +322,8 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                 return true;
             }
 
+            // Currently just let the minus inside the atom 
+            // It will be handled in the next step anyways
             if (cnt == 1){
                 randomAtom->setToken(Token(TokenType::NUMBER, std::to_string(finalResult)));
             }
@@ -330,7 +332,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
         return leftChanged || rightChanged;
     } else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        return evaluateConstantBinary(unaryNode->getOperandRef());
+        return Simplifier::evaluateConstantBinary(unaryNode->getOperandRef());
     }
     return false;
 }
@@ -435,10 +437,10 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
     struct Step {
         const char* name;
         bool result;
-        std::string nodeStr;
+        std::string nodeStrAfter;
         std::function<bool()> func;
 
-        Step(const char* n, std::function<bool()> f) : name(n), func(std::move(f)), result(false), nodeStr(""){}
+        Step(const char* n, std::function<bool()> f) : name(n), func(std::move(f)), result(false), nodeStrAfter(""){}
     };
 
     auto padRight = [](const std::string &s, size_t width) -> std::string {
@@ -468,26 +470,64 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
         for (auto &s : steps) {
             s.result = s.func();
             changed |= s.result;
-            s.nodeStr = node->toString();
+            s.nodeStrAfter = node->toString();
         }
 
-        const size_t nameWidth = 30;
+        const size_t nameWidth    = 40;
         const size_t changedWidth = 7;
-        const size_t nodeStrWidth = 50;
-        std::string table;
-        table += "Iteration " + std::to_string(iterations) + ":\n";
-        table += "+-------------------------------+---------+------------------\n";
-        table += "| Step                          | Changed | Node\n";
-        table += "+-------------------------------+---------+------------------\n";
-        for (auto &s : steps) {
-            std::string name = padRight(s.name, nameWidth);
-            std::string changedStr = s.result ? GREEN + "true" + RESET : RED + "false" + RESET;
-            std::string changedField = std::string(std::max<int>((int)changedWidth - 4, 0), ' ') + changedStr;
-            std::string nodeStr = padRight(s.nodeStr, nodeStrWidth);
-            table += "| " + name + " | " + changedField + " | " + nodeStr + "\n";
+        const size_t nodeStrWidth = 30;
+
+        // columns & widths for dynamic header/separators
+        struct Col { std::string title; size_t width; };
+        std::vector<Col> cols = {
+            {"Step",    nameWidth},
+            {"Changed", changedWidth},
+            {"Node After",    nodeStrWidth}
+        };
+
+        // build separator like: +-----+------+------+
+        std::string separator = "+";
+        for (auto &c : cols) {
+            separator += std::string(c.width + 2, '-') + "+";
         }
-        table += "+-------------------------------+---------+------------------\n";
-        table += "Result: " + node->toString() + "\n";
+        separator += "\n";
+
+        // build header row: | Title ... |
+        std::string header = "|";
+        for (auto &c : cols) {
+            header += " " + padRight(c.title, c.width) + " |";
+        }
+        header += "\n";
+
+        std::ostringstream out;
+        out << "Iteration " << iterations << ":\n";
+        out << separator;
+        out << header;
+        out << separator;
+
+        // rows
+        for (auto &s : steps) {
+            std::string nameField = padRight(s.name, nameWidth);
+
+            // pad the raw "true"/"false" BEFORE adding ANSI codes
+            std::string changedRaw = s.result ? "true" : "false";
+            std::string changedPadded = padRight(changedRaw, changedWidth);
+            std::string changedColored = s.result
+                ? std::string(GREEN) + changedPadded + RESET
+                : std::string(RED)   + changedPadded + RESET;
+
+            std::string nodeField = padRight(s.nodeStrAfter, nodeStrWidth);
+
+            out << "| " << nameField
+                << " | " << changedColored
+                << " | " << nodeField << " |\n";
+        }
+
+        out << separator;
+        out << "Result: " << node->toString() << "\n";
+
+        std::string table = out.str();
+
 
         if (debug) dbg(table);  // send the table to your debug macro
         
