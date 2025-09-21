@@ -93,8 +93,8 @@ void testSimplify() {
     Simplifier x;
 
     std::unique_ptr<ASTNode> normalized = EquationSolver::normalizeEquation(std::move(root));
-    x.simplify(root, true);
-    std::cout << "Simplified: " << root->toString() << "\n";
+    x.simplify(normalized, true);
+    std::cout << "Simplified: " << normalized->toString() << "\n";
 }
 
 void testNormalize() {

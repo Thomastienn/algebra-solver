@@ -29,7 +29,6 @@ void EquationSolver::reorderConstants(std::unique_ptr<ASTNode>& node) {
                 std::swap(binaryNode->getLeftRef(), binaryNode->getRightRef());
             }
         }
-
         reorderConstants(binaryNode->getLeftRef());
         reorderConstants(binaryNode->getRightRef());
     } else if (node->getNodeType() == NodeType::UnaryOp) {
