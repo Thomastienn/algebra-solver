@@ -82,6 +82,7 @@ void testEvaluation() {
     std::cout << expr2 << " = " << result << "\n";
 }
 
+ // ((3.000000 - (4.000000 * x)) - (3.000000 * y))
 void testSimplify() {
     std::string expr = "x+2y-1-3x-y+2";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";

@@ -1,5 +1,6 @@
 #include "Simplifier.h"
 #include "../../utils/Debug.h"
+#include "../../utils/Config.h"
 #include <functional>
 #include <sstream>
 #include <cassert>
@@ -480,28 +481,43 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
             }
             return false;
         };
+        auto isVariable = [](ASTNode *n) -> bool {
+            if (n->getNodeType() == NodeType::Atom) {
+                AtomNode *atomNode = static_cast<AtomNode *>(n);
+                return atomNode->getToken().getType() == TokenType::VARIABLE;
+            }
+            return false;
+        };
 
         std::unordered_map<std::string, double> termMap; // term string -> coefficient
-        std::unordered_map<std::string, std::unique_ptr<ASTNode>*> termNodes; // term string -> representative node
+        std::unordered_map<
+            std::string, 
+            std::pair<
+                std::unique_ptr<ASTNode>*, // Term representative node
+                std::unique_ptr<ASTNode>* // Parent node
+            >
+        > termNodes; // term string -> representative node
         std::unordered_map<std::string, std::vector<std::unique_ptr<ASTNode>*>> termAllNodes; // term string -> all nodes
 
         std::vector<std::unique_ptr<ASTNode>*> leftNodes = Simplifier::flattenNode(binaryNode->getLeftRef());
         std::vector<std::unique_ptr<ASTNode>*> rightNodes = Simplifier::flattenNode(binaryNode->getRightRef());
 
-        auto getTerm = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide) -> void {
+        auto getTerm = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide, std::unique_ptr<ASTNode>* parent) -> void {
             ASTNode *numSidePtr = (*numSide).get();
             ASTNode *termSidePtr = (*termSide).get();
-            if (!isNumber(numSidePtr)) return;
-            if (isNumber(termSidePtr)) return;
+            ASTNode *parentPtr = (*parent).get();
+            if (!isNumber(numSidePtr) || !isVariable(termSidePtr)) {
+                return;
+            }
 
             std::string termStr = termSidePtr->toString();
             AtomNode *numNode = static_cast<AtomNode *>(numSidePtr);
             double coefficient = Token::getNumericValue(numNode->getToken());
 
 
-            termAllNodes[termStr].push_back(termSide);
+            termAllNodes[termStr].push_back(parent);
             termMap[termStr] += coefficient;
-            termNodes[termStr] = numSide;
+            termNodes[termStr] = std::make_pair(termSide, parent);
             return;
         };
 
@@ -513,26 +529,28 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
                     std::unique_ptr<ASTNode>* left = &binNode->getLeftRef();
                     std::unique_ptr<ASTNode>* right = &binNode->getRightRef();
 
-                    getTerm(left, right);
-                    getTerm(right, left);
+                    getTerm(left, right, n);
+                    getTerm(right, left, n);
                 } else if (nPtr->getNodeType() == NodeType::UnaryOp) {
                     UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(nPtr);
                     ASTNode *child = unaryNode->getOperand();
                     if (child->getNodeType() == NodeType::Atom){
-                        if (!isNumber(child)) {
+                        if (isVariable(child)) {
                             std::string termStr = child->toString();
                             double coefficient = (unaryNode->getToken() == TokenType::MINUS) ? -1.0 : 1.0;
                             termMap[termStr] += coefficient;
-                            termNodes[termStr] = &unaryNode->getOperandRef();
+                            // termNodes[termStr] = &unaryNode->getOperandRef();
+                            termNodes[termStr] = std::make_pair(&unaryNode->getOperandRef(), n);
                         }
                     }
                 } else {
                     // Single term like "x" or "y"
                     ASTNode *nPtr = (*n).get();
-                    if (!isNumber(nPtr)) {
+                    if (isVariable(nPtr)) {
                         std::string termStr = (nPtr)->toString();
                         termMap[termStr] += 1.0;
-                        termNodes[termStr] = n;
+                        termNodes[termStr] = std::make_pair(n, n);
+                        termAllNodes[termStr].push_back(n);
                     }
                 }
             }
@@ -542,33 +560,38 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
         sumUp(rightNodes);
 
         if (termMap.size() > 1) {
-            // Pick 1 representative node of each term to be the result
-            // Others become 0
+            bool runOnce = false;
             for (const auto& [termStr, coeff] : termMap) {
+                if (termAllNodes[termStr].size() <= 1) continue;
+                runOnce = true;
                 // Reset all other nodes to 0
                 for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
+                    if (termNodes[termStr].second == n) continue;
                     *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
                 }
                 // The representative node get the result
-                std::unique_ptr<ASTNode>* repNode = termNodes[termStr];
+                auto [repNode, parentNode] = termNodes[termStr];
                 if (coeff != 0.0) {
                     if (coeff < 0) {
-                        *repNode = std::make_unique<UnaryOpNode>(
+                        *parentNode = std::make_unique<UnaryOpNode>(
                             Token(TokenType::MINUS, "-"), 
                             std::make_unique<BinaryOpNode>(
                                 Token(TokenType::MULTIPLY, "*"), 
                                 std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-coeff))), 
-                                termNodes[termStr]->get()->clone()
+                                repNode->get()->clone()
                             )
                         );
                     } else {
-                        *repNode = std::make_unique<BinaryOpNode>(
+                        *parentNode = std::make_unique<BinaryOpNode>(
                             Token(TokenType::MULTIPLY, "*"), 
                             std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(coeff))), 
-                            termNodes[termStr]->get()->clone()
+                            repNode->get()->clone()
                         );
                     }
-                }   
+                }  
+            }
+            if (runOnce) {
+                return true;
             }
         }
 
@@ -600,6 +623,9 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
 
 
     do {
+        if (iterations > Config::MAX_ITERATIONS){
+            throw std::runtime_error("Simplification did not converge after maximum iterations.");
+        }
         changed = false;
 
         // The order matter performance (or even correctness)
