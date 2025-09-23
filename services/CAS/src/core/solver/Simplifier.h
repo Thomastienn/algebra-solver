@@ -49,7 +49,7 @@ private:
     Or other unrelated structure
     e.g., (a + (b - c) + 3*d) -> [a, b, -c, 3*d]
     */
-    static std::vector<ASTNode*> flattenNode(std::unique_ptr<ASTNode>& node);
+    static std::vector<std::unique_ptr<ASTNode>*> flattenNode(std::unique_ptr<ASTNode>& node);
 
 public:
     Simplifier(){};

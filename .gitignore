@@ -1,5 +1,5 @@
 build/
-test.py
+test*.py
 todo.txt
 
 venv/

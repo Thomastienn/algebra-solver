@@ -10,6 +10,8 @@ enum class NodeType {
 
 class ASTNode {
 private:
+    // For atom, it's the token itself
+    // For operation, it's the operation token
     Token token;
     NodeType type;
 

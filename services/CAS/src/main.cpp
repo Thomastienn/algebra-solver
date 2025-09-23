@@ -83,7 +83,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "-1--(-+x)=y";
+    std::string expr = "x+2y-1-3x-y+2";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -92,9 +92,8 @@ void testSimplify() {
     EquationSolver equationSolver;
     Simplifier x;
 
-    std::unique_ptr<ASTNode> normalized = EquationSolver::normalizeEquation(std::move(root));
-    x.simplify(normalized, true);
-    std::cout << "Simplified: " << normalized->toString() << "\n";
+    x.simplify(root, true);
+    std::cout << "Simplified: " << root->toString() << "\n";
 }
 
 void testNormalize() {
@@ -169,21 +168,6 @@ void testIsolateVariable(){
     EquationSolver equationSolver;
     auto isolated = equationSolver.isolateVariable(std::move(root), "x");
     std::cout << "Isolated x: " << isolated->toString() << "\n";
-}
-
-void testFlattenNode(){
-    std::string expr = "2 + 3 * (4 - 1)-4*(a-2)";
-    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
-    Parser parser(std::move(lexer));
-    std::unique_ptr<ASTNode> root = parser.parse();
-    std::cout << "Original: " << root->toString() << "\n";
-
-    Simplifier x;
-    auto nodes = x.flattenNode(root);
-    std::cout << "Flattened nodes: \n";
-    for (const auto &n : nodes) {
-        std::cout << " - " << n->toString() << "\n";
-    }
 }
 
 void parseArgs(int argc, char *argv[]) {
@@ -276,12 +260,27 @@ void testCombineLikeTerms(){
     std::cout << "Combined: " << root->toString() << "\n";
 }
 
+void testFlatten(){
+    std::string expr = "x+2y-1-3x-y+2";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    Simplifier x;
+    auto nodes = x.flattenNode(root);
+    std::cout << "Flattened nodes: \n";
+    for (const auto &n : nodes) {
+        std::cout << " - " << (*n).get()->toString() << "\n";
+    }
+}
+
 int main (int argc, char *argv[]) {
     // parseArgs(argc, argv);
 
     // testIsIsolateSide();
     // testIsolateVariable();
     testSimplify();
+    // testFlatten();
     // testNormalize();
     // testFlattenNode();
 
