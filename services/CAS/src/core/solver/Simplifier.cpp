@@ -7,19 +7,25 @@
 
 #define STEP(fn) {#fn, [&]{ return Simplifier::fn(node); }}
 
-std::vector<std::unique_ptr<ASTNode>*> Simplifier::flattenNode(std::unique_ptr<ASTNode>& node){
-    std::vector<std::unique_ptr<ASTNode>*> nodes;
+std::vector<flattenN> Simplifier::flattenNode(
+    std::unique_ptr<ASTNode>& node, 
+    bool negate
+) {
+    std::vector<flattenN> nodes;
     if (node->getNodeType() == NodeType::Atom) {
-        nodes.push_back(&node);
+        nodes.push_back({&node, negate});
     }
     else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
         ASTNode *child = unaryNode->getOperand();
         if (child->getNodeType() == NodeType::Atom) {
-            nodes.push_back(&node);
+            nodes.push_back({&node, negate});
         } else {
-            std::vector<std::unique_ptr<ASTNode>*> recur = 
-                Simplifier::flattenNode(unaryNode->getOperandRef());
+            std::vector<flattenN> recur = 
+                Simplifier::flattenNode(
+                    unaryNode->getOperandRef(),
+                    unaryNode->getToken() == TokenType::MINUS ? !negate : negate
+                );
             nodes.insert(
                 nodes.end(), 
                 recur.begin(),
@@ -31,8 +37,10 @@ std::vector<std::unique_ptr<ASTNode>*> Simplifier::flattenNode(std::unique_ptr<A
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
         TokenType opType = binaryNode->getToken().getType();
         if (Token::isAdditive(opType)) {
-            auto leftNodes = Simplifier::flattenNode(binaryNode->getLeftRef());
-            auto rightNodes = Simplifier::flattenNode(binaryNode->getRightRef());
+            bool newNegate = opType == TokenType::MINUS ||
+                                opType == TokenType::ASSIGN ? !negate : negate;
+            auto leftNodes = Simplifier::flattenNode(binaryNode->getLeftRef(), negate);
+            auto rightNodes = Simplifier::flattenNode(binaryNode->getRightRef(), newNegate);
             nodes.insert(nodes.end(), 
                 leftNodes.begin(), 
                 leftNodes.end()
@@ -42,7 +50,7 @@ std::vector<std::unique_ptr<ASTNode>*> Simplifier::flattenNode(std::unique_ptr<A
                 rightNodes.end()
             );
         } else {
-            nodes.push_back(&node);
+            nodes.push_back({&node, negate});
         }
     }
     return nodes;
@@ -290,55 +298,64 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
         
         // Flatten nested operations of the same type
         if (left && right) {
-            std::vector<std::unique_ptr<ASTNode>*> flatLeft = Simplifier::flattenNode(binaryNode->getLeftRef());
-            std::vector<std::unique_ptr<ASTNode>*> flatRight = Simplifier::flattenNode(binaryNode->getRightRef());
+            std::vector<flattenN> flatLeft = Simplifier::flattenNode(binaryNode->getLeftRef());
+            std::vector<flattenN> flatRight = Simplifier::flattenNode(
+                binaryNode->getRightRef(), 
+                binaryNode->getToken() == TokenType::ASSIGN || binaryNode->getToken() == TokenType::MINUS
+            );
 
             double finalResult = 0.0;
             std::unique_ptr<ASTNode>* randomAtom = nullptr;
             std::vector<std::unique_ptr<ASTNode>*> removeNodes;
-            int cnt = 0;
-            auto sumUp = [&](std::vector<std::unique_ptr<ASTNode>*> &nodes, bool negate){
-                for(std::unique_ptr<ASTNode>* &n: nodes){
+            auto sumUp = [&](std::vector<flattenN> &nodes){
+                for(flattenN &n: nodes){
                     if (
-                        (*n)->getNodeType() == NodeType::Atom && 
-                        (*n)->getToken().getType() == TokenType::NUMBER
+                        (*n.node)->getNodeType() == NodeType::Atom && 
+                        (*n.node)->getToken().getType() == TokenType::NUMBER
                     ) {
-                        double val = Token::getNumericValue((*n)->getToken());
-                        finalResult += negate ? -val : val; 
+                        double val = Token::getNumericValue((*n.node)->getToken());
+                        finalResult += n.negate ? -val : val; 
                         // (*n)->setToken(Token(TokenType::NUMBER, "0"));
-                        removeNodes.push_back(n);
+                        removeNodes.push_back(n.node);
                         if (val != 0) {
-                            cnt++;
                             if (!randomAtom) {
-                                randomAtom = n;
+                                randomAtom = n.node;
+                                removeNodes.pop_back();
                             }
+                        } else {
+                            removeNodes.pop_back();
                         }
-                    } else if ((*n)->getNodeType() == NodeType::UnaryOp){
-                        UnaryOpNode* unaryNode = static_cast<UnaryOpNode*>((*n).get());
+                    } else if ((*n.node)->getNodeType() == NodeType::UnaryOp){
+                        UnaryOpNode* unaryNode = static_cast<UnaryOpNode*>((*n.node).get());
                         ASTNode *child = unaryNode->getOperand();
-                        if (child->getNodeType() == NodeType::Atom) {
+                        if (
+                            child->getNodeType() == NodeType::Atom && 
+                            child->getToken().getType() == TokenType::NUMBER
+                        ) {
                             AtomNode *childAtom = static_cast<AtomNode *>(child);
                             double val = Token::getNumericValue(childAtom->getToken());
-                            val = negate ? -val : val;
+                            val = n.negate ? -val : val;
                             if (unaryNode->getToken() == TokenType::MINUS) {
                                 finalResult -= val;
                             } else {
                                 finalResult += val;
                             }
                             // childAtom->setToken(Token(TokenType::NUMBER, "0"));
-                            removeNodes.push_back(n);
+                            removeNodes.push_back(n.node);
                             if (val != 0) {
-                                cnt++;
                                 if (!randomAtom) {
                                     randomAtom = &unaryNode->getOperandRef();
+                                    removeNodes.pop_back();
                                 }
+                            } else {
+                                removeNodes.pop_back();
                             }
                         }
                     }
                 }
             };
-            sumUp(flatLeft, false);
-            sumUp(flatRight, binaryNode->getToken() == TokenType::ASSIGN);
+            sumUp(flatLeft);
+            sumUp(flatRight);
 
             // The right is already negated
             // So if we fixed the node on the negated side
@@ -354,12 +371,10 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             }
 
             // If there is more than 2 constants, we just replace one of them
-            if (randomAtom && cnt > 1) {
+            if (randomAtom && removeNodes.size() > 0) {
                 *randomAtom = std::move(newNode);
                 for(std::unique_ptr<ASTNode>* n: removeNodes) {
-                    if (n != randomAtom) {
-                        *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
-                    }
+                    *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
                 }
                 return true;
             }
@@ -461,142 +476,137 @@ bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+// BUG
+// THe thing is we sum it up as positive 
+// But the - from unary or binary still cause it to be wrong value
 bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
-    if (node->getNodeType() == NodeType::Atom) {
+    // Check if one side is a number and the other is a variable
+    auto isNumber = [](ASTNode *n) -> bool {
+        if (n->getNodeType() == NodeType::Atom) {
+            AtomNode *atomNode = static_cast<AtomNode *>(n);
+            return atomNode->getToken().getType() == TokenType::NUMBER;
+        }
         return false;
-    } else if (node->getNodeType() == NodeType::UnaryOp) {
-        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        return Simplifier::combineLikeTerms(unaryNode->getOperandRef());
-    } else if (node->getNodeType() == NodeType::BinaryOp) {
-        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
-        bool leftChanged = Simplifier::combineLikeTerms(binaryNode->getLeftRef());
-        bool rightChanged = Simplifier::combineLikeTerms(binaryNode->getRightRef());
-        // It could be nested term like 
-        // 3 * (x ^ 2) -> So the term is x^2
+    };
+    auto isVariable = [](ASTNode *n) -> bool {
+        if (n->getNodeType() == NodeType::Atom) {
+            AtomNode *atomNode = static_cast<AtomNode *>(n);
+            return atomNode->getToken().getType() == TokenType::VARIABLE;
+        }
+        return false;
+    };
 
-        // Check if one side is a number and the other is a variable
-        auto isNumber = [](ASTNode *n) -> bool {
-            if (n->getNodeType() == NodeType::Atom) {
-                AtomNode *atomNode = static_cast<AtomNode *>(n);
-                return atomNode->getToken().getType() == TokenType::NUMBER;
-            }
-            return false;
-        };
-        auto isVariable = [](ASTNode *n) -> bool {
-            if (n->getNodeType() == NodeType::Atom) {
-                AtomNode *atomNode = static_cast<AtomNode *>(n);
-                return atomNode->getToken().getType() == TokenType::VARIABLE;
-            }
-            return false;
-        };
+    std::unordered_map<std::string, double> termMap; // term string -> coefficient
+    std::unordered_map<
+        std::string, 
+        std::pair<
+            std::unique_ptr<ASTNode>*, // Term representative node
+            std::unique_ptr<ASTNode>* // Parent node
+        >
+    > termNodes; // term string -> representative node
+    std::unordered_map<std::string, std::vector<std::unique_ptr<ASTNode>*>> termAllNodes; // term string -> all nodes
 
-        std::unordered_map<std::string, double> termMap; // term string -> coefficient
-        std::unordered_map<
-            std::string, 
-            std::pair<
-                std::unique_ptr<ASTNode>*, // Term representative node
-                std::unique_ptr<ASTNode>* // Parent node
-            >
-        > termNodes; // term string -> representative node
-        std::unordered_map<std::string, std::vector<std::unique_ptr<ASTNode>*>> termAllNodes; // term string -> all nodes
+    std::vector<flattenN> nodes = Simplifier::flattenNode(node);
 
-        std::vector<std::unique_ptr<ASTNode>*> leftNodes = Simplifier::flattenNode(binaryNode->getLeftRef());
-        std::vector<std::unique_ptr<ASTNode>*> rightNodes = Simplifier::flattenNode(binaryNode->getRightRef());
+    for (auto &n: nodes) {
+        dbg(n.node->get()->toString(), n.negate);
+    }
 
-        auto getTerm = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide, std::unique_ptr<ASTNode>* parent) -> void {
-            ASTNode *numSidePtr = (*numSide).get();
-            ASTNode *termSidePtr = (*termSide).get();
-            ASTNode *parentPtr = (*parent).get();
-            if (!isNumber(numSidePtr) || !isVariable(termSidePtr)) {
-                return;
-            }
-
-            std::string termStr = termSidePtr->toString();
-            AtomNode *numNode = static_cast<AtomNode *>(numSidePtr);
-            double coefficient = Token::getNumericValue(numNode->getToken());
-
-
-            termAllNodes[termStr].push_back(parent);
-            termMap[termStr] += coefficient;
-            termNodes[termStr] = std::make_pair(termSide, parent);
+    auto collectTerms = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide, flattenN& parent) -> void {
+        ASTNode *numSidePtr = (*numSide).get();
+        ASTNode *termSidePtr = (*termSide).get();
+        ASTNode *parentPtr = (*parent.node).get();
+        if (!isNumber(numSidePtr) || !isVariable(termSidePtr)) {
             return;
-        };
-
-        auto sumUp = [&](std::vector<std::unique_ptr<ASTNode>*> &nodes){
-            for(std::unique_ptr<ASTNode>* &n : nodes){
-                ASTNode *nPtr = (*n).get();
-                if (nPtr->getNodeType() == NodeType::BinaryOp) {
-                    BinaryOpNode *binNode = static_cast<BinaryOpNode *>((*n).get());
-                    std::unique_ptr<ASTNode>* left = &binNode->getLeftRef();
-                    std::unique_ptr<ASTNode>* right = &binNode->getRightRef();
-
-                    getTerm(left, right, n);
-                    getTerm(right, left, n);
-                } else if (nPtr->getNodeType() == NodeType::UnaryOp) {
-                    UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(nPtr);
-                    ASTNode *child = unaryNode->getOperand();
-                    if (child->getNodeType() == NodeType::Atom){
-                        if (isVariable(child)) {
-                            std::string termStr = child->toString();
-                            double coefficient = (unaryNode->getToken() == TokenType::MINUS) ? -1.0 : 1.0;
-                            termMap[termStr] += coefficient;
-                            // termNodes[termStr] = &unaryNode->getOperandRef();
-                            termNodes[termStr] = std::make_pair(&unaryNode->getOperandRef(), n);
-                        }
-                    }
-                } else {
-                    // Single term like "x" or "y"
-                    ASTNode *nPtr = (*n).get();
-                    if (isVariable(nPtr)) {
-                        std::string termStr = (nPtr)->toString();
-                        termMap[termStr] += 1.0;
-                        termNodes[termStr] = std::make_pair(n, n);
-                        termAllNodes[termStr].push_back(n);
-                    }
-                }
-            }
-        };
-
-        sumUp(leftNodes);
-        sumUp(rightNodes);
-
-        if (termMap.size() > 1) {
-            bool runOnce = false;
-            for (const auto& [termStr, coeff] : termMap) {
-                if (termAllNodes[termStr].size() <= 1) continue;
-                runOnce = true;
-                // Reset all other nodes to 0
-                for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
-                    if (termNodes[termStr].second == n) continue;
-                    *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
-                }
-                // The representative node get the result
-                auto [repNode, parentNode] = termNodes[termStr];
-                if (coeff != 0.0) {
-                    if (coeff < 0) {
-                        *parentNode = std::make_unique<UnaryOpNode>(
-                            Token(TokenType::MINUS, "-"), 
-                            std::make_unique<BinaryOpNode>(
-                                Token(TokenType::MULTIPLY, "*"), 
-                                std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-coeff))), 
-                                repNode->get()->clone()
-                            )
-                        );
-                    } else {
-                        *parentNode = std::make_unique<BinaryOpNode>(
-                            Token(TokenType::MULTIPLY, "*"), 
-                            std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(coeff))), 
-                            repNode->get()->clone()
-                        );
-                    }
-                }  
-            }
-            if (runOnce) {
-                return true;
-            }
         }
 
-        return leftChanged || rightChanged;
+        std::string termStr = termSidePtr->toString();
+        AtomNode *numNode = static_cast<AtomNode *>(numSidePtr);
+        double coefficient = Token::getNumericValue(numNode->getToken());
+
+        if (parent.negate) {
+            coefficient = -coefficient;
+        }
+
+
+        termAllNodes[termStr].push_back(parent.node);
+        termMap[termStr] += coefficient;
+        termNodes[termStr] = std::make_pair(termSide, parent.node);
+        return;
+    };
+
+    auto sumUp = [&](std::vector<flattenN> &nodes){
+        for(flattenN &n : nodes){
+            ASTNode *nPtr = (*n.node).get();
+            if (nPtr->getNodeType() == NodeType::BinaryOp) {
+                BinaryOpNode *binNode = static_cast<BinaryOpNode *>((*n.node).get());
+                std::unique_ptr<ASTNode>* left = &binNode->getLeftRef();
+                std::unique_ptr<ASTNode>* right = &binNode->getRightRef();
+
+                collectTerms(left, right, n);
+                collectTerms(right, left, n);
+            } else if (nPtr->getNodeType() == NodeType::UnaryOp) {
+                UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(nPtr);
+                ASTNode *child = unaryNode->getOperand();
+                if (child->getNodeType() == NodeType::Atom){
+                    if (isVariable(child)) {
+                        std::string termStr = child->toString();
+                        double coefficient = (unaryNode->getToken() == TokenType::MINUS)^n.negate ? -1.0 : 1.0;
+                        termMap[termStr] += coefficient;
+                        // termNodes[termStr] = &unaryNode->getOperandRef();
+                        termNodes[termStr] = std::make_pair(&unaryNode->getOperandRef(), n.node);
+                    }
+                }
+            } else {
+                // Single term like "x" or "y"
+                ASTNode *nPtr = (*n.node).get();
+                if (isVariable(nPtr)) {
+                    std::string termStr = (nPtr)->toString();
+                    termMap[termStr] += n.negate ? -1.0 : 1.0;
+                    termNodes[termStr] = std::make_pair(n.node, n.node);
+                    termAllNodes[termStr].push_back(n.node);
+                }
+            }
+        }
+    };
+
+    sumUp(nodes);
+    dbg(termMap);
+
+    if (termMap.size() > 1) {
+        bool runOnce = false;
+        for (const auto& [termStr, coeff] : termMap) {
+            if (termAllNodes[termStr].size() <= 1) continue;
+            runOnce = true;
+            // Reset all other nodes to 0
+            for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
+                if (termNodes[termStr].second == n) continue;
+                *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
+            }
+            // The representative node get the result
+            auto [repNode, parentNode] = termNodes[termStr];
+            if (coeff != 0.0) {
+                if (coeff < 0) {
+                    *parentNode = std::make_unique<UnaryOpNode>(
+                        Token(TokenType::MINUS, "-"), 
+                        std::make_unique<BinaryOpNode>(
+                            Token(TokenType::MULTIPLY, "*"), 
+                            std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-coeff))), 
+                            repNode->get()->clone()
+                        )
+                    );
+                } else {
+                    *parentNode = std::make_unique<BinaryOpNode>(
+                        Token(TokenType::MULTIPLY, "*"), 
+                        std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(coeff))), 
+                        repNode->get()->clone()
+                    );
+                }
+            }  
+        }
+        if (runOnce) {
+            return true;
+        }
     }
     return false;
 }

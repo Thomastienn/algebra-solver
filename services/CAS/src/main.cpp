@@ -270,7 +270,7 @@ void testFlatten(){
     auto nodes = x.flattenNode(root);
     std::cout << "Flattened nodes: \n";
     for (const auto &n : nodes) {
-        std::cout << " - " << (*n).get()->toString() << "\n";
+        std::cout << " - " << (*n.node).get()->toString() << "\n";
     }
 }
 

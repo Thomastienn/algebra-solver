@@ -3,6 +3,11 @@
 #include <memory>
 #include <vector>
 
+struct flattenN {
+    std::unique_ptr<ASTNode>* node;
+    bool negate;
+};
+
 class Simplifier {
 private:
     // Algebric simplification methods
@@ -49,7 +54,10 @@ private:
     Or other unrelated structure
     e.g., (a + (b - c) + 3*d) -> [a, b, -c, 3*d]
     */
-    static std::vector<std::unique_ptr<ASTNode>*> flattenNode(std::unique_ptr<ASTNode>& node);
+    static std::vector<flattenN> flattenNode(
+        std::unique_ptr<ASTNode>& node, 
+        bool negate = false
+    );
 
 public:
     Simplifier(){};
