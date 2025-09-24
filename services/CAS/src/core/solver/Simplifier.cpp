@@ -525,7 +525,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     std::unordered_map<
         std::string, 
         std::pair<
-            std::unique_ptr<ASTNode>*, // Term representative node
+            flattenN, // Term representative node
             std::unique_ptr<ASTNode>* // Parent node
         >
     > termNodes; // term string -> representative node
@@ -533,9 +533,9 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
 
     std::vector<flattenN> nodes = Simplifier::flattenNode(node);
 
-    // for (auto &n: nodes) {
-    //     dbg(n.node->get()->toString(), n.negate);
-    // }
+    for (auto &n: nodes) {
+        dbg(n.node->get()->toString(), n.negate);
+    }
 
     auto collectTerms = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide, flattenN& parent) -> void {
         ASTNode *numSidePtr = (*numSide).get();
@@ -556,7 +556,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
 
         termAllNodes[termStr].push_back(parent.node);
         termMap[termStr] += coefficient;
-        termNodes[termStr] = std::make_pair(termSide, parent.node);
+        termNodes[termStr] = std::make_pair(flattenN{termSide, parent.negate}, parent.node);
         return;
     };
 
@@ -579,7 +579,10 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
                         double coefficient = (unaryNode->getToken() == TokenType::MINUS)^n.negate ? -1.0 : 1.0;
                         termMap[termStr] += coefficient;
                         // termNodes[termStr] = &unaryNode->getOperandRef();
-                        termNodes[termStr] = std::make_pair(&unaryNode->getOperandRef(), n.node);
+                        termNodes[termStr] = std::make_pair(
+                            flattenN{&unaryNode->getOperandRef(), n.negate},
+                            n.node
+                        );
                     }
                 }
             } else {
@@ -588,7 +591,10 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
                 if (isVariable(nPtr)) {
                     std::string termStr = (nPtr)->toString();
                     termMap[termStr] += n.negate ? -1.0 : 1.0;
-                    termNodes[termStr] = std::make_pair(n.node, n.node);
+                    termNodes[termStr] = std::make_pair(
+                        flattenN{n.node, n.negate}, 
+                        n.node
+                    );
                     termAllNodes[termStr].push_back(n.node);
                 }
             }
@@ -596,7 +602,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     };
 
     sumUp(nodes);
-    // dbg(termMap);
+    dbg(termMap);
 
     if (termMap.size() > 1) {
         bool runOnce = false;
@@ -611,20 +617,23 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
             // The representative node get the result
             auto [repNode, parentNode] = termNodes[termStr];
             if (coeff != 0.0) {
-                if (coeff < 0) {
+                double absCoeff = std::abs(coeff);
+                dbg(coeff, repNode.negate, repNode.node->get()->toString());
+                if ((coeff < 0) ^ (repNode.negate)) {
+                    dbg("Negative coeff", absCoeff, !repNode.negate);
                     *parentNode = std::make_unique<UnaryOpNode>(
                         Token(TokenType::MINUS, "-"), 
                         std::make_unique<BinaryOpNode>(
                             Token(TokenType::MULTIPLY, "*"), 
-                            std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-coeff))), 
-                            repNode->get()->clone()
+                            std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absCoeff))), 
+                            repNode.node->get()->clone()
                         )
                     );
                 } else {
                     *parentNode = std::make_unique<BinaryOpNode>(
                         Token(TokenType::MULTIPLY, "*"), 
-                        std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(coeff))), 
-                        repNode->get()->clone()
+                        std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absCoeff))), 
+                        repNode.node->get()->clone()
                     );
                 }
             }  
