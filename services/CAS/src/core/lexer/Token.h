@@ -3,6 +3,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include "../../utils/Debug.h"
 
 enum TokenType {
     // Atoms
@@ -43,7 +44,19 @@ public:
         if (token.getType() != NUMBER) {
             throw std::runtime_error("Token is not a number");
         }
-        return std::stod(token.getValue());
+        bool negate = false;
+        int start = 0;
+        std::string tokenStr = token.getValue();
+        for(int i = 0; i < tokenStr.size(); i++) {
+            if (tokenStr[i] == '-') {
+                negate = !negate;
+            } else if (tokenStr[i] != '+') {
+                start = i;
+                break;
+            }
+        }
+        std::string val = (negate? "-": "") + tokenStr.substr(start);
+        return std::stod(val);
     }
 
     static char operationToChr(const TokenType &op);

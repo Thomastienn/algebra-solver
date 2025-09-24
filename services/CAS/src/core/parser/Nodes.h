@@ -124,7 +124,7 @@ public:
     }
 
     std::string toString() override {
-        return "u" + getToken().getValue() + operand->toString();
+        return getToken().getValue() + operand->toString();
     }
 
     std::unique_ptr<ASTNode> clone() const override {

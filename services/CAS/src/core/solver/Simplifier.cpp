@@ -295,6 +295,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
 
             double finalResult = 0.0;
             std::unique_ptr<ASTNode>* randomAtom = nullptr;
+            std::vector<std::unique_ptr<ASTNode>*> removeNodes;
             int cnt = 0;
             auto sumUp = [&](std::vector<std::unique_ptr<ASTNode>*> &nodes, bool negate){
                 for(std::unique_ptr<ASTNode>* &n: nodes){
@@ -304,7 +305,8 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                     ) {
                         double val = Token::getNumericValue((*n)->getToken());
                         finalResult += negate ? -val : val; 
-                        (*n)->setToken(Token(TokenType::NUMBER, "0"));
+                        // (*n)->setToken(Token(TokenType::NUMBER, "0"));
+                        removeNodes.push_back(n);
                         if (val != 0) {
                             cnt++;
                             if (!randomAtom) {
@@ -323,7 +325,8 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                             } else {
                                 finalResult += val;
                             }
-                            childAtom->setToken(Token(TokenType::NUMBER, "0"));
+                            // childAtom->setToken(Token(TokenType::NUMBER, "0"));
+                            removeNodes.push_back(n);
                             if (val != 0) {
                                 cnt++;
                                 if (!randomAtom) {
@@ -353,14 +356,12 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             // If there is more than 2 constants, we just replace one of them
             if (randomAtom && cnt > 1) {
                 *randomAtom = std::move(newNode);
+                for(std::unique_ptr<ASTNode>* n: removeNodes) {
+                    if (n != randomAtom) {
+                        *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
+                    }
+                }
                 return true;
-            }
-
-            // Currently just let the minus inside the atom 
-            // It will be handled in the next step anyways
-            // cnt == 1 means only have one constant, so we apply back again
-            if (cnt == 1){
-                *randomAtom = std::move(newNode);
             }
         }
         
