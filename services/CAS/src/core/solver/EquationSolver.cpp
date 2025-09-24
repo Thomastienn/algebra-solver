@@ -110,21 +110,3 @@ bool EquationSolver::isIsolated(std::unique_ptr<ASTNode>& node, const std::strin
     return false;   
 }
 
-bool EquationSolver::containsVariable(std::unique_ptr<ASTNode>& node, const std::string& variable) {
-    if (node->getNodeType() == NodeType::Atom) {
-        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
-        return atomNode->getToken().getType() == TokenType::VARIABLE && 
-               atomNode->getToken().getValue() == variable;
-    } else if (node->getNodeType() == NodeType::UnaryOp) {
-        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        return EquationSolver::containsVariable(unaryNode->getOperandRef(), variable);
-    } else if (node->getNodeType() == NodeType::BinaryOp) {
-        return EquationSolver::containsVariable(static_cast<BinaryOpNode *>(node.get())->getLeftRef(), variable) || 
-               EquationSolver::containsVariable(static_cast<BinaryOpNode *>(node.get())->getRightRef(), variable);
-    }
-    return false;   
-}
-
-std::unique_ptr<ASTNode> EquationSolver::isolateVariable(std::unique_ptr<ASTNode> equation, const std::string &variable) {
-    return nullptr;
-}

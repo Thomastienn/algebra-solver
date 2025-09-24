@@ -16,13 +16,6 @@ private:
     static bool isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable);
 
     /*
-    Check if the node contains the variable
-    If x appear once in this node, return true
-    */
-    static bool containsVariable(std::unique_ptr<ASTNode>& node, const std::string& variable);
-
-
-    /*
      a * constant -> constant * a
     */
     static void reorderConstants(std::unique_ptr<ASTNode>& node);
@@ -40,8 +33,4 @@ public:
      * a * constant -> constant * a
     */
     static std::unique_ptr<ASTNode> normalizeEquation(std::unique_ptr<ASTNode> equation);
-    
-    /* Isolate variable on LHS, e.g., 2*x + 3 = 7y -> x = (7y - 3) / 2 */
-    static std::unique_ptr<ASTNode> isolateVariable(std::unique_ptr<ASTNode> equation, const std::string& variable);
-
 };
