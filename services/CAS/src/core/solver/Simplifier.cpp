@@ -116,6 +116,9 @@ bool Simplifier::distributeMinusUnaryInBinary(std::unique_ptr<ASTNode> &node) {
             ASTNode *child = unaryNode->getOperand();
             if (child->getNodeType() == NodeType::BinaryOp) {
                 BinaryOpNode *childBinary = static_cast<BinaryOpNode *>(child);
+                if (!Token::isAdditive(childBinary->getToken().getType())) {
+                    return distributeMinusUnaryInBinary(unaryNode->getOperandRef());
+                }
                 // Distribute the minus to both sides of the binary operation
                 Token plusToken(TokenType::PLUS, "+");
                 Token minusToken(TokenType::MINUS, "-");
@@ -396,11 +399,13 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                             node = isLeft ? 
                                 std::move(binaryNode->getRightRef()) : 
                                 std::move(binaryNode->getLeftRef());
+                            dbg("Removed addition by 0");
                             return true;
                         // Binary multiply by 0
                         } else if (binaryNode->getToken() == TokenType::MULTIPLY) {
                             // Multiplication by zero results in zero
                             node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
+                            dbg("Removed multiplication by 0");
                             return true;
                         // Binary minus with 0
                         } else if (binaryNode->getToken() == TokenType::MINUS) {
@@ -414,6 +419,7 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                                 // x - 0 -> x
                                 node = std::move(binaryNode->getLeftRef());
                             }
+                            dbg("Removed subtraction by 0");
                             return true;
                         }
                         // Binary divide by 0
@@ -421,6 +427,7 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                             if (isLeft) {
                                 // 0 / x -> 0
                                 node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
+                                dbg("Removed division of 0");
                                 return true;
                             } else {
                                 throw std::runtime_error("Division by zero");
@@ -434,11 +441,13 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                             node = isLeft ? 
                                 std::move(binaryNode->getRightRef()) : 
                                 std::move(binaryNode->getLeftRef());
+                            dbg("Removed multiplication by 1");
                             return true;
                         // Divide by 1
                         } else if (binaryNode->getToken() == TokenType::DIVIDE && isLeft) {
                             // Division by one results in the numerator
                             node = std::move(binaryNode->getLeftRef());
+                            dbg("Removed division by 1");
                             return true;
                         }
                     }
@@ -457,6 +466,7 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                                 std::move(binaryNode->getRightRef()) : 
                                 std::move(binaryNode->getLeftRef());
                         }
+                        dbg("Removed unary 0");
                         return true;
                     }
                 }
@@ -533,10 +543,6 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
 
     std::vector<flattenN> nodes = Simplifier::flattenNode(node);
 
-    for (auto &n: nodes) {
-        dbg(n.node->get()->toString(), n.negate);
-    }
-
     auto collectTerms = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide, flattenN& parent) -> void {
         ASTNode *numSidePtr = (*numSide).get();
         ASTNode *termSidePtr = (*termSide).get();
@@ -602,7 +608,6 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     };
 
     sumUp(nodes);
-    dbg(termMap);
 
     if (termMap.size() > 1) {
         bool runOnce = false;
@@ -681,9 +686,9 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
             STEP(Simplifier::mergeBinaryWithRightUnary),
             STEP(Simplifier::distributeMultiplyBinary),
             STEP(Simplifier::evaluateConstantBinary),
+            STEP(Simplifier::evaluateSpecialCases),
             STEP(Simplifier::seperateIntoUnary),
             STEP(Simplifier::combineLikeTerms),
-            STEP(Simplifier::evaluateSpecialCases)
         };
 
         // aggregate overall change
