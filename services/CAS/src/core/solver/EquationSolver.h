@@ -1,14 +1,11 @@
 #pragma once
-#include <vector>
-#include <memory>
 #include <unordered_set>
 #include "../../utils/Debug.h"
 #include "Evaluation.h"
 
 class EquationSolver {
-private:
+protected:
     std::vector<std::unique_ptr<ASTNode>> equations;
-
     /*
     Check if the variable is isolated on one side of the equation
     If x in the only variable in this node, return true

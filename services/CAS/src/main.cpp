@@ -1,11 +1,4 @@
-#define private public
-#include "core/solver/EquationSolver.h"
-#include "core/solver/Simplifier.h"
-#undef private
-
-#include <iostream>
-#include <string>
-#include <memory>
+#include "test/Tester.h"
 #include "network/SocketClient.h"
 
 void testLexer() {
@@ -89,8 +82,8 @@ void testSimplify() {
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    EquationSolver equationSolver;
-    Simplifier x;
+    Tester equationSolver;
+    Tester x;
 
     x.simplify(root, true);
     std::cout << "Simplified: " << root->toString() << "\n";
@@ -102,7 +95,7 @@ void testNormalize() {
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    auto normalized = EquationSolver::normalizeEquation(std::move(root));
+    auto normalized = Tester::normalizeEquation(std::move(root));
     std::cout << "Normalized: " << normalized->toString() << "\n";
 }
 
@@ -112,7 +105,7 @@ void testEvaluateConstantBinary(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Simplifier x;
+    Tester x;
     x.evaluateConstantBinary(root);
     std::cout << "Evaluated: " << root->toString() << "\n";
 }
@@ -123,7 +116,7 @@ void testDistributeMultiplyBinary(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Simplifier x;
+    Tester x;
     x.distributeMultiplyBinary(root);
     std::cout << "Distributed: " << root->toString() << "\n";
 }
@@ -134,7 +127,7 @@ void testDependencies(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Expression: " << root->toString() << "\n";
-    EquationSolver equationSolver;
+    Tester equationSolver;
     auto deps = equationSolver.dependencies(Token(VARIABLE, "y"), std::move(root));
     std::cout << "Dependencies of y: ";
     for (const auto &dep : deps) {
@@ -149,25 +142,12 @@ void testIsIsolateSide(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Expression: " << root->toString() << "\n";
-    EquationSolver equationSolver;
+    Tester equationSolver;
     BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(root.get());
     bool lhsIsolated = equationSolver.isIsolated(assignNode->getLeftRef(), "x");
     bool rhsIsolated = equationSolver.isIsolated(assignNode->getRightRef(), "x");
     std::cout << "LHS is isolated for x: " << (lhsIsolated ? "true" : "false") << "\n";
     std::cout << "RHS is isolated for x: " << (rhsIsolated ? "true" : "false") << "\n";
-}
-
-void testIsolateVariable(){
-    // std::string expr = "2*x-3=x+7*y*9";
-    std::string expr = "(x+2)-(y-3)=2*(x+5)";
-    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
-    Parser parser(std::move(lexer));
-    std::unique_ptr<ASTNode> root = EquationSolver::normalizeEquation(parser.parse());
-    std::cout << "Original: " << root->toString() << "\n";
-
-    EquationSolver equationSolver;
-    auto isolated = equationSolver.isolateVariable(std::move(root), "x");
-    std::cout << "Isolated x: " << isolated->toString() << "\n";
 }
 
 void parseArgs(int argc, char *argv[]) {
@@ -255,7 +235,7 @@ void testCombineLikeTerms(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Simplifier x;
+    Tester x;
     x.combineLikeTerms(root);
     std::cout << "Combined: " << root->toString() << "\n";
 }
@@ -266,7 +246,7 @@ void testFlatten(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Simplifier x;
+    Tester x;
     auto nodes = x.flattenNode(root);
     std::cout << "Flattened nodes: \n";
     for (const auto &n : nodes) {
@@ -280,7 +260,7 @@ void testReduceUnary(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Simplifier x;
+    Tester x;
     x.reduceUnary(root);
     std::cout << "Reduced: " << root->toString() << "\n";
 }
@@ -291,7 +271,7 @@ void testEvaluateSpecialCases(){
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Simplifier x;
+    Tester x;
     x.evaluateSpecialCases(root);
     std::cout << "Evaluated special cases: " << root->toString() << "\n";
 }

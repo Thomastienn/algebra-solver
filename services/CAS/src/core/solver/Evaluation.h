@@ -1,7 +1,5 @@
 #pragma once
-#include <string>
 #include <unordered_map>
-#include <memory>
 #include "../parser/Parser.h"
 
 class Evaluation {

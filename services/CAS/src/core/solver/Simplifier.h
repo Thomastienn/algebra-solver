@@ -21,7 +21,7 @@ namespace std {
 }
 
 class Simplifier {
-private:
+protected:
     // Algebric simplification methods
 
     /* e.g., -+-x -> x or +x -> x*/

@@ -1,11 +1,7 @@
 #include "Simplifier.h"
 #include "../../utils/Debug.h"
-#include "../../utils/Config.h"
-#include <functional>
-#include <sstream>
 #include <cassert>
 
-#define STEP(fn) {#fn, [&]{ return Simplifier::fn(node); }}
 
 std::vector<flattenN> Simplifier::flattenNode(
     std::unique_ptr<ASTNode>& node, 
@@ -651,112 +647,20 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
 }
 
 void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
-    bool changed;
-    int iterations = 0;
-
-    struct Step {
-        const char* name;
-        bool result;
-        std::string nodeStrAfter;
-        std::function<bool()> func;
-
-        Step(const char* n, std::function<bool()> f) : name(n), func(std::move(f)), result(false), nodeStrAfter(""){}
+    std::vector<Table::Step> steps = {
+        STEP(Simplifier, reduceUnary),
+        STEP(Simplifier, distributeMinusUnaryInBinary),
+        STEP(Simplifier, mergeBinaryWithRightUnary),
+        STEP(Simplifier, distributeMultiplyBinary),
+        STEP(Simplifier, evaluateConstantBinary),
+        STEP(Simplifier, evaluateSpecialCases),
+        STEP(Simplifier, seperateIntoUnary),
+        STEP(Simplifier, combineLikeTerms),
     };
-
-    auto padRight = [](const std::string &s, size_t width) -> std::string {
-        if (s.size() >= width) return s.substr(0, width);
-        return s + std::string(width - s.size(), ' ');
+    std::vector<Table::Col> cols = {
+        {"Step", 40, "string"},
+        {"Changed", 7, "boolean"},
+        {"Node changed", 50, "string"},
     };
-    const std::string GREEN = "\033[32m";
-    const std::string RED   = "\033[31m";
-    const std::string RESET = "\033[0m";
-
-
-    do {
-        if (iterations > Config::MAX_ITERATIONS){
-            throw std::runtime_error("Simplification did not converge after maximum iterations.");
-        }
-        changed = false;
-
-        // The order matter performance (or even correctness)
-        // So be careful when changing the order
-        std::vector<Step> steps = {
-            STEP(Simplifier::reduceUnary),
-            STEP(Simplifier::distributeMinusUnaryInBinary),
-            STEP(Simplifier::mergeBinaryWithRightUnary),
-            STEP(Simplifier::distributeMultiplyBinary),
-            STEP(Simplifier::evaluateConstantBinary),
-            STEP(Simplifier::evaluateSpecialCases),
-            STEP(Simplifier::seperateIntoUnary),
-            STEP(Simplifier::combineLikeTerms),
-        };
-
-        // aggregate overall change
-        for (auto &s : steps) {
-            s.result = s.func();
-            changed |= s.result;
-            s.nodeStrAfter = node->toString();
-        }
-
-        const size_t nameWidth    = 40;
-        const size_t changedWidth = 7;
-        const size_t nodeStrWidth = 50;
-
-        // columns & widths for dynamic header/separators
-        struct Col { std::string title; size_t width; };
-        std::vector<Col> cols = {
-            {"Step",    nameWidth},
-            {"Changed", changedWidth},
-            {"Node After",    nodeStrWidth}
-        };
-
-        // build separator like: +-----+------+------+
-        std::string separator = "+";
-        for (auto &c : cols) {
-            separator += std::string(c.width + 2, '-') + "+";
-        }
-        separator += "\n";
-
-        // build header row: | Title ... |
-        std::string header = "|";
-        for (auto &c : cols) {
-            header += " " + padRight(c.title, c.width) + " |";
-        }
-        header += "\n";
-
-        std::ostringstream out;
-        out << "Iteration " << iterations << ":\n";
-        out << separator;
-        out << header;
-        out << separator;
-
-        // rows
-        for (auto &s : steps) {
-            std::string nameField = padRight(s.name, nameWidth);
-
-            // pad the raw "true"/"false" BEFORE adding ANSI codes
-            std::string changedRaw = s.result ? "true" : "false";
-            std::string changedPadded = padRight(changedRaw, changedWidth);
-            std::string changedColored = s.result
-                ? std::string(GREEN) + changedPadded + RESET
-                : std::string(RED)   + changedPadded + RESET;
-
-            std::string nodeField = padRight(s.nodeStrAfter, nodeStrWidth);
-
-            out << "| " << nameField
-                << " | " << changedColored
-                << " | " << nodeField << " |\n";
-        }
-
-        out << separator;
-        out << "Result: " << node->toString() << "\n";
-
-        std::string table = out.str();
-
-
-        if (debug) dbg(table);  // send the table to your debug macro
-        
-
-        iterations++;
-    } while (changed);
+    Debug::executeSteps(node, debug, steps, cols);
 }

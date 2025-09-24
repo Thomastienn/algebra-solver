@@ -3,7 +3,6 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
-#include "../../utils/Debug.h"
 
 enum TokenType {
     // Atoms

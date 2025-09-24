@@ -14,7 +14,9 @@ add_executable(AlgebraSolver
     src/core/solver/Evaluation.cpp
     src/core/solver/EquationSolver.cpp
     src/core/solver/Simplifier.cpp
+    src/core/solver/Isolator.cpp
     src/network/SocketClient.cpp
     src/utils/Math.cpp
+    src/utils/Debug.cpp
 )
 
