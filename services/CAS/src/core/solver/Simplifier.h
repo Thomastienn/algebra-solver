@@ -6,23 +6,29 @@
 struct flattenN {
     std::unique_ptr<ASTNode>* node;
     bool negate;
+
+    bool operator==(const flattenN& other) const {
+        return node->get()->toString() == other.node->get()->toString() && negate == other.negate;
+    }
 };
+namespace std {
+    template <>
+    struct hash<flattenN> {
+        std::size_t operator()(const flattenN& p) const noexcept {
+            return std::hash<std::string>{}(p.node->get()->toString()) ^ (std::hash<bool>{}(p.negate) << 1);
+        }
+    };
+}
 
 class Simplifier {
 private:
     // Algebric simplification methods
 
-    /* e.g., 2*x -> 2x (Single Token) */
-    static bool groupTokenTerms(std::unique_ptr<ASTNode>& node); 
-
-    /* e.g., --x -> x */
-    static bool eliminateDoubleNegatives(std::unique_ptr<ASTNode>& node);
+    /* e.g., -+-x -> x or +x -> x*/
+    static bool reduceUnary(std::unique_ptr<ASTNode>& node);
 
     /* e.g., -(x + y) -> -x + -y */
     static bool distributeMinusUnaryInBinary(std::unique_ptr<ASTNode>& node);
-
-    /* e.g., +x -> x */
-    static bool removePlusUnary(std::unique_ptr<ASTNode>& node);
 
     /* e.g., x + (-y) -> x - y */
     static bool mergeBinaryWithRightUnary(std::unique_ptr<ASTNode>& node);
@@ -39,8 +45,8 @@ private:
     */
     static bool combineLikeTerms(std::unique_ptr<ASTNode>& node);
 
-    /* e.g., 0 + 3 -> 3*/
-    static bool removeZeroTerms(std::unique_ptr<ASTNode>& node);
+    /* Stuff with 0 or 1 e.g., a * 0 -> 0 or 0 - x -> -x*/
+    static bool evaluateSpecialCases(std::unique_ptr<ASTNode>& node);
 
     /* Merge AST node like this: +(-x) -> -x or -(-x) -> +x */
     // static void mergeUnaryIntoBinary(std::unique_ptr<ASTNode>& node);

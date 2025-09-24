@@ -261,7 +261,7 @@ void testCombineLikeTerms(){
 }
 
 void testFlatten(){
-    std::string expr = "x+2y-1-3x-y+2";
+    std::string expr = "x - (2y + -3)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -270,8 +270,30 @@ void testFlatten(){
     auto nodes = x.flattenNode(root);
     std::cout << "Flattened nodes: \n";
     for (const auto &n : nodes) {
-        std::cout << " - " << (*n.node).get()->toString() << "\n";
+        std::cout << "o " << (n.negate ? "-" : "")<< (*n.node).get()->toString() << "\n";
     }
+}
+
+void testReduceUnary(){
+    std::string expr = "+-+--x";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    Simplifier x;
+    x.reduceUnary(root);
+    std::cout << "Reduced: " << root->toString() << "\n";
+}
+
+void testEvaluateSpecialCases(){
+    std::string expr = "0*x + 1*y - 0 + 3 - 3 + 0";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    Simplifier x;
+    x.evaluateSpecialCases(root);
+    std::cout << "Evaluated special cases: " << root->toString() << "\n";
 }
 
 int main (int argc, char *argv[]) {
@@ -283,6 +305,8 @@ int main (int argc, char *argv[]) {
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
+    // testReduceUnary();
+    // testEvaluateSpecialCases();
 
     // testCombineLikeTerms();
     // testDistributeMultiplyBinary();
