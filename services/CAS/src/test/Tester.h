@@ -1,7 +1,8 @@
 #include "../core/solver/EquationSolver.h"
 #include "../core/solver/Simplifier.h"
+#include "../core/solver/Isolator.h"
 
-class Tester: public Simplifier, public EquationSolver {
+class Tester: public Simplifier, public EquationSolver, public Isolator {
 public:
     using Simplifier::combineLikeTerms;
     using Simplifier::distributeMinusUnaryInBinary;
@@ -15,4 +16,7 @@ public:
 
     using EquationSolver::isIsolated;
     using EquationSolver::reorderConstants;
+
+    using Isolator::transferAdditives;
+    using Isolator::isolateVariable;
 };

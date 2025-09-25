@@ -6,7 +6,7 @@ std::string Debug::padRight(const std::string &s, size_t width) {
     return s + std::string(width - s.size(), ' ');
 };
 
-void Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps) {
+bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps) {
     int iterations = 0;
     bool changed = false;
 
@@ -79,4 +79,6 @@ void Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector
         iterations++;
 
     } while (changed);
+
+    return iterations > 1;
 }

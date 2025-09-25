@@ -641,7 +641,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     return false;
 }
 
-void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
+bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
     std::vector<Table::Step> steps = {
         STEP(Simplifier, reduceUnary),
         STEP(Simplifier, distributeMinusUnaryInBinary),
@@ -652,5 +652,5 @@ void Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
         STEP(Simplifier, seperateIntoUnary),
         STEP(Simplifier, combineLikeTerms),
     };
-    Debug::executeSteps(node, debug, steps);
+    return Debug::executeSteps(node, debug, steps);
 }

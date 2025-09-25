@@ -18,5 +18,6 @@ add_executable(AlgebraSolver
     src/network/SocketClient.cpp
     src/utils/Math.cpp
     src/utils/Debug.cpp
+    src/utils/ASTUtils.cpp
 )
 

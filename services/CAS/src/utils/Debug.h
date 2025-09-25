@@ -14,6 +14,7 @@ template<typename Head, typename... Tail> void dbg_out(Head H, Tail... T) { cerr
 // #define dbg(...)
 
 #define STEP(cls, fn) {#cls "::" #fn, [&]{ return cls::fn(node); }}
+#define STEP_ARGS(cls, fn, ...) {#cls "::" #fn, [&]{ return cls::fn(__VA_ARGS__); }}
 
 namespace Color {
     static const std::string GREEN = "\033[32m";
@@ -41,5 +42,5 @@ class Debug {
 private:
     static std::string padRight(const std::string &s, size_t width);
 public:
-    static void executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps);
+    static bool executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps);
 };

@@ -275,17 +275,30 @@ void testEvaluateSpecialCases(){
     std::cout << "Evaluated special cases: " << root->toString() << "\n";
 }
 
+void testIsolate(){
+    std::string expr = "x - 2*y + 3 = 0";
+    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
+    Parser parser(std::move(lexer));
+    std::unique_ptr<ASTNode> root = parser.parse();
+    std::cout << "Original: " << root->toString() << "\n";
+    Tester x;
+    x.isolateVariable(root, "x", true);
+    std::cout << "Isolated: " << root->toString() << "\n";
+}
+
 int main (int argc, char *argv[]) {
     // parseArgs(argc, argv);
 
     // testIsIsolateSide();
     // testIsolateVariable();
-    testSimplify();
+    // testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
     // testReduceUnary();
     // testEvaluateSpecialCases();
+
+    testIsolate();
 
     // testCombineLikeTerms();
     // testDistributeMultiplyBinary();
