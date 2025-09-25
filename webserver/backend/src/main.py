@@ -28,3 +28,7 @@ async def connect(ws: WebSocket, session_id: str):
 @app.post("/simplify")
 def simplify(req: SimplifyRequest) -> SimplifyResponse:
     ...
+
+# import cas
+#
+# print(cas.simplify("2 + 2"))  # Example usage

@@ -3,3 +3,4 @@ test*.py
 todo.txt
 
 venv/
+.cache
