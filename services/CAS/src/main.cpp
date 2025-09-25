@@ -76,13 +76,12 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "938 + 1406";
+    std::string expr = "3+2*y = 2 - (x*4 + 5)";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
-    Tester equationSolver;
     Tester x;
 
     x.simplify(root, true);

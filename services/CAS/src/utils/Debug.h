@@ -33,7 +33,6 @@ namespace Table {
     struct Col { 
         std::string title;
         size_t width; 
-        std::string type;
     };
 };
 
@@ -42,5 +41,5 @@ class Debug {
 private:
     static std::string padRight(const std::string &s, size_t width);
 public:
-    static void executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::vector<Table::Col> columns);
+    static void executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps);
 };

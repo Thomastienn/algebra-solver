@@ -6,9 +6,16 @@ std::string Debug::padRight(const std::string &s, size_t width) {
     return s + std::string(width - s.size(), ' ');
 };
 
-void Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::vector<Table::Col> cols) {
+void Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps) {
     int iterations = 0;
     bool changed = false;
+
+    std::vector<Table::Col> cols = {
+        {"Step", 40},
+        {"Changed", 7},
+        {"Node changed", 50},
+    };
+
     do {
         if (iterations > Config::MAX_ITERATIONS){
             throw std::runtime_error("Simplification did not converge after maximum iterations.");
@@ -24,10 +31,6 @@ void Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector
             changed |= s.result;
             s.nodeStrAfter = node->toString();
         }
-
-        const size_t nameWidth    = 40;
-        const size_t changedWidth = 7;
-        const size_t nodeStrWidth = 50;
 
         // build separator like: +-----+------+------+
         std::string separator = "+";
@@ -51,15 +54,15 @@ void Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector
 
         // rows
         for (auto &s : steps) {
-            std::string nameField = Debug::padRight(s.name, nameWidth);
+            std::string nameField = Debug::padRight(s.name, cols[0].width);
 
             std::string changedRaw = s.result ? "true" : "false";
-            std::string changedPadded = Debug::padRight(changedRaw, changedWidth);
+            std::string changedPadded = Debug::padRight(changedRaw, cols[1].width);
             std::string changedColored = s.result
                 ? std::string(Color::GREEN) + changedPadded + Color::RESET
                 : std::string(Color::RED)   + changedPadded + Color::RESET;
 
-            std::string nodeField = Debug::padRight(s.nodeStrAfter, nodeStrWidth);
+            std::string nodeField = Debug::padRight(s.nodeStrAfter, cols[2].width);
 
             out << "| " << nameField
                 << " | " << changedColored
