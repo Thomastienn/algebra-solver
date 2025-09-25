@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "3+2*y = 2 - (x*4 + 5)";
+    std::string expr = "2x + 3x + 4 - x + 2";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -292,14 +292,14 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolateVariable();
-    // testSimplify();
+    testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
     // testReduceUnary();
     // testEvaluateSpecialCases();
 
-    testIsolate();
+    // testIsolate();
 
     // testCombineLikeTerms();
     // testDistributeMultiplyBinary();

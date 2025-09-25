@@ -119,15 +119,17 @@ bool Token::isAdditive(const TokenType& type) {
         case PLUS:
         case MINUS:
             return true;
+        default:
+            return false;
+    }
+}
+bool Token::isMultiplicative(const TokenType& type) {
+    switch(type) {
         case MULTIPLY:
         case DIVIDE:
-        case POWER:
-        case ASSIGN:
-        case SQRT:
-        case UNKNOWN:
-            return false;
+            return true;
         default:
-            throw std::runtime_error("Token doesn't supported");
+            return false;
     }
 }
 

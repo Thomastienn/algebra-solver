@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bullseye
+FROM python:3.12
 
 WORKDIR /app
 
@@ -17,17 +17,17 @@ RUN cmake --version
 RUN pip install pybind11
 
 # Copy C++ CAS source
-COPY services/CAS/src cas/
+COPY services/CAS/src src/
 
 # Copy CMakeLists.txt
 COPY services/CAS/CMakeLists.txt .
 
-# Build CAS module
-RUN mkdir build && cd build && cmake .. && make
-
 # Copy backend Python dependencies
 COPY webserver/backend/requirements.txt backend_requirements.txt
 RUN pip install -r backend_requirements.txt
+
+# Build CAS module
+RUN mkdir build && cd build && cmake .. && make
 
 # Copy backend source
 COPY webserver/backend/src/ .

@@ -66,6 +66,7 @@ public:
     static bool isUnaryOperation(const TokenType &type);
     static bool isAtom(const TokenType &type);
     static bool isAdditive(const TokenType &type);
+    static bool isMultiplicative(const TokenType &type);
     static TokenType getInverseOperation(const TokenType &type);
 
     /* Merge +, -, Return unary token */

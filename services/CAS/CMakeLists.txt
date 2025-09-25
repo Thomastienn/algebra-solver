@@ -6,6 +6,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -fsanitize=address -fno-omit-frame-pointer")
 endif()
 
+include(FetchContent)
+FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11.git
+)
+FetchContent_MakeAvailable(pybind11)
+
 # shared core library
 add_library(algebra_core SHARED
     src/core/lexer/Lexer.cpp
@@ -28,8 +35,6 @@ target_link_libraries(AlgebraSolver PRIVATE algebra_core)
 
 add_executable(AlgebraSolverTest src/test/test.cpp)
 target_link_libraries(AlgebraSolverTest PRIVATE algebra_core)
-
-find_package(pybind11 REQUIRED)
 
 #  python module
 pybind11_add_module(cas src/binding.cpp)

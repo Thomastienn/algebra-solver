@@ -19,4 +19,5 @@ public:
 
     using Isolator::transferAdditives;
     using Isolator::isolateVariable;
+    using Isolator::transferMultiplicatives;
 };
