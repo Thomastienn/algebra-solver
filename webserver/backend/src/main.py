@@ -1,5 +1,12 @@
 import asyncio
+
 from fastapi import FastAPI, WebSocket
+
+from structures import (
+    SimplifyRequest, 
+    SimplifyResponse
+)
+
 
 
 sessions = {}
@@ -16,3 +23,8 @@ async def connect(ws: WebSocket, session_id: str):
         # Browser closed -> cleanup
         sessions.pop(session_id, None)
         print(f"Frontend {session_id} disconnected")
+        await ws.close()
+
+@app.post("/simplify")
+def simplify(req: SimplifyRequest) -> SimplifyResponse:
+    ...

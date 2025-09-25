@@ -21,3 +21,18 @@ add_executable(AlgebraSolver
     src/utils/ASTUtils.cpp
 )
 
+add_executable(AlgebraSolverTest
+    src/test/test.cpp
+    src/core/lexer/Lexer.cpp
+    src/core/lexer/Token.cpp
+    src/core/parser/Parser.cpp
+    src/core/solver/Evaluation.cpp
+    src/core/solver/EquationSolver.cpp
+    src/core/solver/Simplifier.cpp
+    src/core/solver/Isolator.cpp
+    src/network/SocketClient.cpp
+    src/utils/Math.cpp
+    src/utils/Debug.cpp
+    src/utils/ASTUtils.cpp
+)
+
