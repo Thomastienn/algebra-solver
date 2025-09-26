@@ -1,6 +1,7 @@
 import asyncio
 
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 
 from structures import (
     SimplifyRequest, 
@@ -10,6 +11,14 @@ import cas
 
 sessions = {}
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://algebra-solver-nine.vercel.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.websocket("/connect/{session_id}")
 async def connect(ws: WebSocket, session_id: str):
