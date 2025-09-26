@@ -9,18 +9,23 @@
 struct EquationEntry {
     std::unique_ptr<ASTNode> equation;
     int id;
+    std::unordered_set<std::string> dependencies;
 
     EquationEntry(
         std::unique_ptr<ASTNode> eq,
-        int i
-    ) : equation(std::move(eq)), id(i) {}
+        std::unordered_set<std::string> dep
+    ) : equation(std::move(eq)), dependencies(dep) {}
 
     bool operator==(const EquationEntry &other) const {
-        return this->id == other.id;
+        return this->equation->toString() == other.equation->toString();
     }
 
     bool operator!=(const EquationEntry &other) const {
         return !(*this == other);
+    }
+    
+    EquationEntry clone() const {
+        return EquationEntry(this->equation->clone(), this->dependencies);
     }
 };
 
@@ -33,13 +38,19 @@ protected:
 
     static std::unordered_set<std::string> extractVariables(std::unique_ptr<ASTNode>& node);
 
+    static void subsituteVariable(
+        std::unique_ptr<ASTNode>& equation,
+        const std::string &variable,
+        std::unique_ptr<ASTNode> substitution
+    );
+
     Simplifier simplifier;
     Isolator isolator;
 public:
     EquationSolver() : simplifier(), isolator() {}
     
     /* List of variables that this variable depends on */
-    static std::unordered_set<Token> dependencies(const std::string &variable, std::unique_ptr<ASTNode> equation);
+    static std::unordered_set<std::string> dependencies(const std::string &variable, std::unique_ptr<ASTNode>& equation);
 
     /* 
      * LHS = RHS -> LHS - RHS = 0 
