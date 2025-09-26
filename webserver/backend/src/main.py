@@ -6,8 +6,7 @@ from structures import (
     SimplifyRequest, 
     SimplifyResponse
 )
-
-
+import cas
 
 sessions = {}
 app = FastAPI()
@@ -27,4 +26,5 @@ async def connect(ws: WebSocket, session_id: str):
 
 @app.post("/simplify")
 def simplify(req: SimplifyRequest) -> SimplifyResponse:
-    ...
+    cas_result = cas.simplify(req.expression)
+    return SimplifyResponse(simplified=cas_result)

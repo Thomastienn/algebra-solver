@@ -4,4 +4,4 @@ class SimplifyRequest(BaseModel):
     expression: str
 
 class SimplifyResponse(BaseModel):
-    simplified_expression: str
+    simplified: str

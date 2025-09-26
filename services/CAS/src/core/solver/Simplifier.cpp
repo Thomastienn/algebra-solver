@@ -535,6 +535,9 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     std::unordered_map<std::string, std::vector<std::unique_ptr<ASTNode>*>> termAllNodes; // term string -> all nodes
 
     std::vector<flattenN> nodes = Simplifier::flattenNode(node);
+    // for (flattenN &n : nodes) {
+    //     dbg((*n.node)->toString() + (n.negate ? " (neg)" : ""));
+    // }
 
     auto collectTerms = [&](std::unique_ptr<ASTNode>* numSide, std::unique_ptr<ASTNode>* termSide, flattenN& parent) -> void {
         ASTNode *numSidePtr = (*numSide).get();
@@ -602,43 +605,38 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
 
     sumUp(nodes);
 
-    if (termMap.size() > 1) {
-        bool runOnce = false;
-        for (const auto& [termStr, coeff] : termMap) {
-            if (termAllNodes[termStr].size() <= 1) continue;
-            runOnce = true;
-            // Reset all other nodes to 0
-            for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
-                if (termNodes[termStr].second == n) continue;
-                *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
-            }
-            // The representative node get the result
-            auto [repNode, parentNode] = termNodes[termStr];
-            if (coeff != 0.0) {
-                double absCoeff = std::abs(coeff);
-                if ((coeff < 0) ^ (repNode.negate)) {
-                    *parentNode = std::make_unique<UnaryOpNode>(
-                        Token(TokenType::MINUS, "-"), 
-                        std::make_unique<BinaryOpNode>(
-                            Token(TokenType::MULTIPLY, "*"), 
-                            std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absCoeff))), 
-                            repNode.node->get()->clone()
-                        )
-                    );
-                } else {
-                    *parentNode = std::make_unique<BinaryOpNode>(
+    bool runOnce = false;
+    for (const auto& [termStr, coeff] : termMap) {
+        if (termAllNodes[termStr].size() <= 1) continue;
+        runOnce = true;
+        // Reset all other nodes to 0
+        for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
+            if (termNodes[termStr].second == n) continue;
+            *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
+        }
+        // The representative node get the result
+        auto [repNode, parentNode] = termNodes[termStr];
+        if (coeff != 0.0) {
+            double absCoeff = std::abs(coeff);
+            if ((coeff < 0) ^ (repNode.negate)) {
+                *parentNode = std::make_unique<UnaryOpNode>(
+                    Token(TokenType::MINUS, "-"), 
+                    std::make_unique<BinaryOpNode>(
                         Token(TokenType::MULTIPLY, "*"), 
                         std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absCoeff))), 
                         repNode.node->get()->clone()
-                    );
-                }
-            }  
-        }
-        if (runOnce) {
-            return true;
-        }
+                    )
+                );
+            } else {
+                *parentNode = std::make_unique<BinaryOpNode>(
+                    Token(TokenType::MULTIPLY, "*"), 
+                    std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absCoeff))), 
+                    repNode.node->get()->clone()
+                );
+            }
+        }  
     }
-    return false;
+    return runOnce;
 }
 
 bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {

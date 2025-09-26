@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import './App.css'
 
+interface SimplifyRequest {
+  expression: string
+}
+interface SimplifyResponse {
+  simplified: string
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<'simplify' | 'evaluate'>('simplify')
   const [simplifyInput, setSimplifyInput] = useState('')
@@ -8,9 +15,14 @@ function App() {
   const [evaluateInput, setEvaluateInput] = useState('')
   const [evaluateResult, setEvaluateResult] = useState('')
 
-  const handleSimplify = () => {
-    // TODO: Call backend API
-    setSimplifyResult(`Simplified: ${simplifyInput}`)
+  const handleSimplify = async () => {
+    const response = await fetch('/simplify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expression: simplifyInput } as SimplifyRequest),
+    })
+    const data: SimplifyResponse = await response.json()
+    setSimplifyResult(`Simplified: ${data.simplified}`)
   }
 
   const handleEvaluate = () => {
@@ -26,13 +38,13 @@ function App() {
       </header>
 
       <div className="tabs">
-        <button 
+        <button
           className={`tab ${activeTab === 'simplify' ? 'active' : ''}`}
           onClick={() => setActiveTab('simplify')}
         >
           Simplify Equation
         </button>
-        <button 
+        <button
           className={`tab ${activeTab === 'evaluate' ? 'active' : ''}`}
           onClick={() => setActiveTab('evaluate')}
         >

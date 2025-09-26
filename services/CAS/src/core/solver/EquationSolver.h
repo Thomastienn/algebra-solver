@@ -30,4 +30,12 @@ public:
      * a * constant -> constant * a
     */
     static std::unique_ptr<ASTNode> normalizeEquation(std::unique_ptr<ASTNode> equation);
+
+    /*
+    * TODO
+    * Standard: 
+    * Cosntant * (Token)
+    * Constants at the end of addition/subtraction chain
+    */
+    static std::unique_ptr<ASTNode> standardizeEquation(std::unique_ptr<ASTNode> equation);
 };
