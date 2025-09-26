@@ -15,12 +15,16 @@ function App() {
   const [evaluateInput, setEvaluateInput] = useState('')
   const [evaluateResult, setEvaluateResult] = useState('')
 
+  const [isLoading, setIsLoading] = useState(false)
+
   const handleSimplify = async () => {
-    const response = await fetch('/simplify', {
+    setIsLoading(true)
+    const response = await fetch('https://algebra-solver.onrender.com/simplify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expression: simplifyInput } as SimplifyRequest),
     })
+    setIsLoading(false)
     const data: SimplifyResponse = await response.json()
     setSimplifyResult(`Simplified: ${data.simplified}`)
   }
@@ -65,8 +69,8 @@ function App() {
                 className="input textarea"
                 rows={3}
               />
-              <button onClick={handleSimplify} className="button">
-                Simplify
+              <button onClick={handleSimplify} className={`button ${isLoading ? 'loading' : ''}`} disabled={isLoading}>
+                {isLoading ? 'Simplifying...' : 'Simplify'}
               </button>
             </div>
             {simplifyResult && (

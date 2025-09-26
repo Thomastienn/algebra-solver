@@ -197,3 +197,10 @@
     border-left: 2px solid #60a5fa;
   }
 }
+
+.button.loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7; 
+  color: #94a3b8;
+}
