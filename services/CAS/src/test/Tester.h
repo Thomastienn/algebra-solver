@@ -14,8 +14,12 @@ public:
     using Simplifier::seperateIntoUnary;
     using Simplifier::mergeBinaryWithRightUnary;
 
-    using EquationSolver::isIsolated;
     using EquationSolver::reorderConstants;
+    using EquationSolver::extractVariables;
+    using EquationSolver::normalizeEquation;
+    using EquationSolver::dependencies;
+    using EquationSolver::standardizeEquation;
+    using EquationSolver::solve;
 
     using Isolator::transferAdditives;
     using Isolator::isolateVariable;

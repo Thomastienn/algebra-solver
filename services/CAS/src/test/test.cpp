@@ -120,35 +120,6 @@ void testDistributeMultiplyBinary(){
     std::cout << "Distributed: " << root->toString() << "\n";
 }
 
-void testDependencies(){
-    std::string expr = "y = 3 + y * (n*1 - x) + z^m";
-    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
-    Parser parser(std::move(lexer));
-    std::unique_ptr<ASTNode> root = parser.parse();
-    std::cout << "Expression: " << root->toString() << "\n";
-    Tester equationSolver;
-    auto deps = equationSolver.dependencies(Token(VARIABLE, "y"), std::move(root));
-    std::cout << "Dependencies of y: ";
-    for (const auto &dep : deps) {
-        std::cout << dep.getValue() << " ";
-    }
-    std::cout << "\n";
-}
-
-void testIsIsolateSide(){
-    std::string expr = "x=3*y";
-    std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
-    Parser parser(std::move(lexer));
-    std::unique_ptr<ASTNode> root = parser.parse();
-    std::cout << "Expression: " << root->toString() << "\n";
-    Tester equationSolver;
-    BinaryOpNode *assignNode = static_cast<BinaryOpNode *>(root.get());
-    bool lhsIsolated = equationSolver.isIsolated(assignNode->getLeftRef(), "x");
-    bool rhsIsolated = equationSolver.isIsolated(assignNode->getRightRef(), "x");
-    std::cout << "LHS is isolated for x: " << (lhsIsolated ? "true" : "false") << "\n";
-    std::cout << "RHS is isolated for x: " << (rhsIsolated ? "true" : "false") << "\n";
-}
-
 void parseArgs(int argc, char *argv[]) {
     SocketClient client;
     std::string host = "";
@@ -286,13 +257,35 @@ void testIsolate(){
     std::cout << "Isolated: " << root->toString() << "\n";
 }
 
+void testSolve(){
+    std::vector<std::string> equations = {
+        "x + a = b * c",
+        "a = b + 2",
+        "c = 3",
+        "b = 4"
+    };
+    std::vector<std::unique_ptr<ASTNode>> parsedEquations;
+    for (const auto &eq : equations) {
+        std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(eq);
+        Parser parser(std::move(lexer));
+        parsedEquations.push_back(parser.parse());
+    }
+    Tester solver;
+    auto solution = solver.solve(parsedEquations, "x");
+    if (solution) {
+        std::cout << "Solution for x: " << solution->toString() << "\n";
+    } else {
+        std::cout << "No solution found for x.\n";
+    }
+}
+
 int main (int argc, char *argv[]) {
     cout << "Running tests...\n";
     // parseArgs(argc, argv);
 
     // testIsIsolateSide();
     // testIsolateVariable();
-    testSimplify();
+    // testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
@@ -304,5 +297,7 @@ int main (int argc, char *argv[]) {
     // testCombineLikeTerms();
     // testDistributeMultiplyBinary();
     // testSocketClient();
+    
+    testSolve();
     return 0;
 }
