@@ -8,7 +8,6 @@
 
 struct EquationEntry {
     std::unique_ptr<ASTNode> equation;
-    int id;
     std::unordered_set<std::string> dependencies;
 
     EquationEntry(

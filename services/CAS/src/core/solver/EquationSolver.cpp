@@ -179,8 +179,11 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
     // }
     
     // Start with equation contains the variable
+    // TODO: Do heuristic search in the future
+    // Instead of BSF, use A* or Dijkstra to find the shortest path
+
     while (!queue.empty()){
-        EquationEntry& entry = queue.front();
+        EquationEntry entry = queue.front().clone();
         queue.pop();
 
         // No more dependencies, final result
@@ -199,9 +202,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
             }
             std::vector<EquationEntry> relatedEqs = varToEquation[dep];
             for (EquationEntry &relatedEq : relatedEqs) {
-                if (relatedEq.id == entry.id) {
-                    continue;
-                }
+                // TODO: Skip self
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
                 this->isolator.isolateVariable(isolated, dep);
                 this->simplifier.simplify(isolated);
