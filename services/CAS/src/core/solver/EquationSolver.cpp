@@ -3,6 +3,7 @@
 #include <queue>
 #include "../../utils/ASTUtils.h"
 #include "../../utils/Debug.h"
+#include "../../utils/Config.h"
 
 void EquationSolver::subsituteVariable(
     std::unique_ptr<ASTNode>& equation,
@@ -137,7 +138,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
     const std::string &variable
 ) {
     // Normalize and simplify equations
-    std::queue<EquationEntry> queue;
+    std::priority_queue<EquationEntry> queue;
     std::unordered_map<std::string, std::vector<EquationEntry>> varToEquation;
     int i = 0;
     for (auto &eq : equations) {
@@ -145,25 +146,21 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         this->simplifier.simplify(normalized);
         
         std::unordered_set<std::string> vars = EquationSolver::extractVariables(normalized);
-        std::unordered_set<std::string> needSolveVars = EquationSolver::dependencies(variable, normalized);
+        int numVars = ASTUtils::countVariableOccurrences(normalized);
 
-        EquationEntry entry(std::move(normalized), needSolveVars);
-        if (ASTUtils::containsVariable(normalized, variable)) {
-            queue.push(entry);
-        }
+        bool containsVar = ASTUtils::containsVariable(normalized, variable);
+        EquationEntry entry(std::move(normalized), vars, numVars);
 
         // Build graph connections
         // Eq 1: a = b + c (variables: a,b,c)
         // Eq 2: b = 2 * d (variables: b,d)
         // Eq 1 and 2 are connected because they share variable b
         for (const std::string &var : vars) {
-            if (varToEquation.find(var) != varToEquation.end()) {
-                varToEquation[var].push_back(entry.clone());
-            } else {
-                varToEquation[var] = {entry.clone()};
-            }
+            varToEquation[var].push_back(entry.clone());
         }
-
+        if (containsVar) {
+            queue.push(std::move(entry));
+        }
         i++;
     }
 
@@ -182,12 +179,22 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
     // TODO: Do heuristic search in the future
     // Instead of BSF, use A* or Dijkstra to find the shortest path
 
+    // For now, the strategy is prioritize reducing the number of dependencies
+
+    int iterations = 0;
     while (!queue.empty()){
-        EquationEntry entry = queue.front().clone();
+        iterations++;
+        if (iterations > Config::MAX_ITERATIONS_CONVERGE_SOLVE) {
+            std::cerr << "Max iterations reached in EquationSolver::solve" << std::endl;
+            return nullptr;
+        }
+        EquationEntry entry = queue.top().clone();
         queue.pop();
 
+        // dbg(entry.equation->toString(), entry.vars, entry.numVariables);
+
         // No more dependencies, final result
-        if (entry.dependencies.empty()) {
+        if (entry.vars.size() == 1) {
             // Isolate the variable
             std::unique_ptr<ASTNode> isolated = entry.equation->clone();
             this->isolator.isolateVariable(isolated, variable);
@@ -196,26 +203,44 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         }
 
         // WARNING: There could be a loop of dependencies
-        for (std::string dep: entry.dependencies){
-            if (varToEquation.find(dep) == varToEquation.end()) {
+        for (std::string var: entry.vars){
+            // dbg("Processing variable", var);
+            // Do not replace the variable we want to solve
+            if (var == variable) {
                 continue;
             }
-            std::vector<EquationEntry> relatedEqs = varToEquation[dep];
+            // No equation to derive this variable
+            if (varToEquation.find(var) == varToEquation.end()) {
+                throw std::runtime_error("This variable cannot be derived: " + var);
+            }
+            std::vector<EquationEntry>& relatedEqs = varToEquation.at(var);
             for (EquationEntry &relatedEq : relatedEqs) {
-                // TODO: Skip self
+                // Do not use the same equation to substitute
+                if (relatedEq.equation->toString() == entry.equation->toString()) {
+                    // dbg("Skipping same equation");
+                    continue;
+                }
+                // dbg(var, relatedEq.equation->toString());
+                
+                EquationEntry newEntry = entry.clone();
+
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
-                this->isolator.isolateVariable(isolated, dep);
+                this->isolator.isolateVariable(isolated, var);
                 this->simplifier.simplify(isolated);
 
-                EquationSolver::subsituteVariable(entry.equation, dep, std::move(isolated));
-                this->simplifier.simplify(entry.equation);
+                BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 
-                queue.push(entry.clone());
+                EquationSolver::subsituteVariable(newEntry.equation, var, std::move(assignNode->getRightRef()));
+                this->simplifier.simplify(newEntry.equation);
+
+                newEntry.numVariables += relatedEq.numVariables - 1;
+                newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
+                // dbg(newEntry.equation->toString(), newEntry.numVariables);
+                queue.push(std::move(newEntry));
             }
         }
 
     }
-
 
     return nullptr;
 }

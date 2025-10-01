@@ -14,3 +14,18 @@ bool ASTUtils::containsVariable(std::unique_ptr<ASTNode>& node, const std::strin
     }
     return false;   
 }
+
+int ASTUtils::countVariableOccurrences(std::unique_ptr<ASTNode>& node) {
+    if (node->getNodeType() == NodeType::Atom) {
+        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
+        return atomNode->getToken().getType() == TokenType::VARIABLE ? 1 : 0;
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        return ASTUtils::countVariableOccurrences(unaryNode->getOperandRef());
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        return ASTUtils::countVariableOccurrences(binaryNode->getLeftRef()) + 
+               ASTUtils::countVariableOccurrences(binaryNode->getRightRef());
+    }
+    return 0;   
+}

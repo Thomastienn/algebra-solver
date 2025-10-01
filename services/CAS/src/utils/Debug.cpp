@@ -17,7 +17,7 @@ bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector
     };
 
     do {
-        if (iterations > Config::MAX_ITERATIONS){
+        if (iterations > Config::MAX_ITERATIONS_CONVERGE_SOLVE){
             throw std::runtime_error("Simplification did not converge after maximum iterations.");
         }
         changed = false;
