@@ -5,7 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from structures import (
     SimplifyRequest, 
-    SimplifyResponse
+    SimplifyResponse,
+    SystemSolveRequest,
+    SystemSolveResponse
 )
 import cas
 
@@ -37,3 +39,18 @@ async def connect(ws: WebSocket, session_id: str):
 def simplify(req: SimplifyRequest) -> SimplifyResponse:
     cas_result = cas.simplify(req.expression)
     return SimplifyResponse(simplified=cas_result)
+
+@app.post("/solve-system")
+def solve_system(req: SystemSolveRequest) -> SystemSolveResponse:
+    try:
+        result = cas.solve(req.equations, req.variable)
+        if result and result.strip():
+            return SystemSolveResponse(result=f"{req.variable}={result}")
+        else:
+            return SystemSolveResponse(result="No solution found or system is inconsistent.")
+    except Exception as e:
+        return SystemSolveResponse(result=f"Error: {str(e)}")
+
+@app.get("/")
+def root():
+    return {"message": "Welcome to the CAS backend!"}
