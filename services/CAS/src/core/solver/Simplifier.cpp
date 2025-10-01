@@ -32,7 +32,7 @@ std::vector<flattenN> Simplifier::flattenNode(
     } else if (node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
         TokenType opType = binaryNode->getToken().getType();
-        if (Token::isAdditive(opType)) {
+        if (Token::isAdditive(opType) || opType == TokenType::ASSIGN) {
             bool newNegate = opType == TokenType::MINUS ||
                                 opType == TokenType::ASSIGN ? !negate : negate;
             auto leftNodes = Simplifier::flattenNode(binaryNode->getLeftRef(), negate);
@@ -604,6 +604,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     };
 
     sumUp(nodes);
+    // dbg(termMap);
 
     bool runOnce = false;
     for (const auto& [termStr, coeff] : termMap) {
