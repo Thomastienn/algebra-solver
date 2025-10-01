@@ -45,7 +45,7 @@ def solve_system(req: SystemSolveRequest) -> SystemSolveResponse:
     try:
         result = cas.solve(req.equations, req.variable)
         if result and result.strip():
-            return SystemSolveResponse(result=f"{req.variable}={result}")
+            return SystemSolveResponse(result=result)
         else:
             return SystemSolveResponse(result="No solution found or system is inconsistent.")
     except Exception as e:
