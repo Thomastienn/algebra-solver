@@ -1,10 +1,49 @@
 #include "EquationSolver.h"
-#include <cassert>
-#include <cmath>
-#include <memory>
+#include <iostream>
+#include <queue>
+#include "../../utils/ASTUtils.h"
+#include "../../utils/Debug.h"
+#include "../../utils/Config.h"
 
-void EquationSolver::addEquation(std::unique_ptr<ASTNode> equation) { 
-    equations.push_back(std::move(equation)); 
+void EquationSolver::subsituteVariable(
+    std::unique_ptr<ASTNode>& equation,
+    const std::string &variable,
+    std::unique_ptr<ASTNode> substitution
+) {
+    if (equation->getNodeType() == NodeType::Atom) {
+        if (equation->getToken() == TokenType::VARIABLE &&
+            equation->getToken().getValue() == variable) {
+            equation = substitution->clone();
+        }
+    } else if (equation->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(equation.get());
+        EquationSolver::subsituteVariable(binaryNode->getLeftRef(), variable, substitution->clone());
+        EquationSolver::subsituteVariable(binaryNode->getRightRef(), variable, std::move(substitution));
+    } else if (equation->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(equation.get());
+        EquationSolver::subsituteVariable(unaryNode->getOperandRef(), variable, std::move(substitution));
+    }
+}
+
+std::unordered_set<std::string> EquationSolver::extractVariables(std::unique_ptr<ASTNode>& node) {
+    std::unordered_set<std::string> vars;
+    if (node->getNodeType() == NodeType::Atom) {
+        if (node->getToken() == TokenType::VARIABLE) {
+            vars.insert(node->getToken().getValue());
+        }
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        std::unordered_set<std::string> leftVars = EquationSolver::extractVariables(binaryNode->getLeftRef());
+        std::unordered_set<std::string> rightVars = EquationSolver::extractVariables(binaryNode->getRightRef());
+        vars.merge(leftVars);
+        vars.merge(rightVars);
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        std::unordered_set<std::string> operandVars = EquationSolver::extractVariables(unaryNode->getOperandRef());
+        vars.merge(operandVars);
+    }
+
+    return vars;
 }
 
 void EquationSolver::reorderConstants(std::unique_ptr<ASTNode>& node) {
@@ -57,35 +96,35 @@ std::unique_ptr<ASTNode> EquationSolver::normalizeEquation(std::unique_ptr<ASTNo
         std::move(zeroNode)
     );
 
-    unique_ptr<ASTNode> baseEquation = std::move(newEquation);
+    std::unique_ptr<ASTNode> baseEquation = std::move(newEquation);
     EquationSolver::reorderConstants(baseEquation);
     return baseEquation;
 }
 
-std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, std::unique_ptr<ASTNode> equation) {
-    std::unordered_set<Token> deps;
+std::unordered_set<std::string> EquationSolver::dependencies(const std::string &variable, std::unique_ptr<ASTNode>& equation) {
+    std::unordered_set<std::string> deps;
     if (equation->getNodeType() == NodeType::Atom) {
         if (equation->getToken() == TokenType::VARIABLE &&
-            equation->getToken() != variable) {
-            deps.insert(equation->getToken());
+            equation->getToken().getValue() != variable) {
+            deps.insert(equation->getToken().getValue());
         }
     } else if (equation->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(equation.get());
-        std::unordered_set<Token> leftDeps = EquationSolver::dependencies(
+        std::unordered_set<std::string> leftDeps = EquationSolver::dependencies(
             variable, 
-            std::move(binaryNode->getLeftRef())
+            binaryNode->getLeftRef()
         );
-        std::unordered_set<Token> rightDeps = EquationSolver::dependencies(
+        std::unordered_set<std::string> rightDeps = EquationSolver::dependencies(
             variable, 
-            std::move(binaryNode->getRightRef())
+            binaryNode->getRightRef()
         );
         deps.merge(leftDeps);
         deps.merge(rightDeps);
     } else if (equation->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(equation.get());
-        std::unordered_set<Token> operandDeps = EquationSolver::dependencies(
+        std::unordered_set<std::string> operandDeps = EquationSolver::dependencies(
             variable, 
-            std::move(unaryNode->getOperandRef())
+            unaryNode->getOperandRef()
         );
         deps.merge(operandDeps);
     }
@@ -94,19 +133,114 @@ std::unordered_set<Token> EquationSolver::dependencies(const Token &variable, st
 }
 
 
-bool EquationSolver::isIsolated(std::unique_ptr<ASTNode>& node, const std::string& variable){
-    if (node->getNodeType() == NodeType::Atom) {
-        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
-        bool varAtom = atomNode->getToken().getType() == TokenType::VARIABLE && 
-                atomNode->getToken().getValue() == variable;
-        return varAtom;
-    } else if (node->getNodeType() == NodeType::UnaryOp) {
-        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        return EquationSolver::isIsolated(unaryNode->getOperandRef(), variable);
-    } else if (node->getNodeType() == NodeType::BinaryOp) {
-        return EquationSolver::isIsolated(static_cast<BinaryOpNode *>(node.get())->getLeftRef(), variable) && 
-               EquationSolver::isIsolated(static_cast<BinaryOpNode *>(node.get())->getRightRef(), variable);
-    }
-    return false;   
-}
+std::unique_ptr<ASTNode> EquationSolver::solve(
+    std::vector<std::unique_ptr<ASTNode>>& equations,
+    const std::string &variable
+) {
+    // Normalize and simplify equations
+    std::priority_queue<EquationEntry> queue;
+    std::unordered_map<std::string, std::vector<EquationEntry>> varToEquation;
+    int i = 0;
+    for (auto &eq : equations) {
+        std::unique_ptr<ASTNode> normalized = EquationSolver::normalizeEquation(std::move(eq));
+        this->simplifier.simplify(normalized);
+        
+        std::unordered_set<std::string> vars = EquationSolver::extractVariables(normalized);
+        int numVars = ASTUtils::countVariableOccurrences(normalized);
 
+        bool containsVar = ASTUtils::containsVariable(normalized, variable);
+        EquationEntry entry(std::move(normalized), vars, numVars);
+
+        // Build graph connections
+        // Eq 1: a = b + c (variables: a,b,c)
+        // Eq 2: b = 2 * d (variables: b,d)
+        // Eq 1 and 2 are connected because they share variable b
+        for (const std::string &var : vars) {
+            varToEquation[var].push_back(entry.clone());
+        }
+        if (containsVar) {
+            queue.push(std::move(entry));
+        }
+        i++;
+    }
+
+    // for (const auto& [var, eqs] : varToEquation) {
+    //     dbg(var, eqs);
+    //     for (const auto& eq : eqs) {
+    //         // dbg(entries[eq].equation->toString());
+    //         std::unique_ptr<ASTNode> clonedEq = entries[eq].equation->clone();
+    //         this->isolator.isolateVariable(clonedEq, var);
+    //         this->simplifier.simplify(clonedEq);
+    //         dbg(clonedEq->toString());
+    //     }
+    // }
+    
+    // Start with equation contains the variable
+    // TODO: Do heuristic search in the future
+    // Instead of BSF, use A* or Dijkstra to find the shortest path
+
+    // For now, the strategy is prioritize reducing the number of dependencies
+
+    int iterations = 0;
+    while (!queue.empty()){
+        iterations++;
+        if (iterations > Config::MAX_ITERATIONS_CONVERGE_SOLVE) {
+            std::cerr << "Max iterations reached in EquationSolver::solve" << std::endl;
+            return nullptr;
+        }
+        EquationEntry entry = queue.top().clone();
+        queue.pop();
+
+        // dbg(entry.equation->toString(), entry.vars, entry.numVariables);
+
+        // No more dependencies, final result
+        if (entry.vars.size() == 1) {
+            // Isolate the variable
+            std::unique_ptr<ASTNode> isolated = entry.equation->clone();
+            this->isolator.isolateVariable(isolated, variable);
+            this->simplifier.simplify(isolated);
+            return isolated;
+        }
+
+        // WARNING: There could be a loop of dependencies
+        for (std::string var: entry.vars){
+            // dbg("Processing variable", var);
+            // Do not replace the variable we want to solve
+            if (var == variable) {
+                continue;
+            }
+            // No equation to derive this variable
+            if (varToEquation.find(var) == varToEquation.end()) {
+                throw std::runtime_error("This variable cannot be derived: " + var);
+            }
+            std::vector<EquationEntry>& relatedEqs = varToEquation.at(var);
+            for (EquationEntry &relatedEq : relatedEqs) {
+                // Do not use the same equation to substitute
+                if (relatedEq.equation->toString() == entry.equation->toString()) {
+                    // dbg("Skipping same equation");
+                    continue;
+                }
+                // dbg(var, relatedEq.equation->toString());
+                
+                EquationEntry newEntry = entry.clone();
+
+                std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
+                this->isolator.isolateVariable(isolated, var);
+                this->simplifier.simplify(isolated);
+
+                BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
+
+                EquationSolver::subsituteVariable(newEntry.equation, var, std::move(assignNode->getRightRef()));
+                this->simplifier.simplify(newEntry.equation);
+
+                newEntry.numVariables += relatedEq.numVariables - 1;
+                newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
+                // dbg(newEntry.equation->toString(), newEntry.numVariables);
+                queue.push(std::move(newEntry));
+            }
+        }
+
+    }
+
+    return nullptr;
+}

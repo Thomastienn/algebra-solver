@@ -5,7 +5,6 @@ bool Isolator::transferAdditives(std::unique_ptr<ASTNode>& lhs, std::unique_ptr<
         BinaryOpNode *binOpNode = static_cast<BinaryOpNode *>(lhs.get());
         TokenType opType = binOpNode->getToken().getType();
 
-        dbg(binOpNode->getToken());
         if (Token::isAdditive(opType)) {
             std::unique_ptr<ASTNode>& left = binOpNode->getLeftRef();
             std::unique_ptr<ASTNode>& right = binOpNode->getRightRef();
@@ -49,7 +48,6 @@ bool Isolator::transferMultiplicatives(std::unique_ptr<ASTNode>& lhs, std::uniqu
         BinaryOpNode *binOpNode = static_cast<BinaryOpNode *>(lhs.get());
         TokenType opType = binOpNode->getToken().getType();
 
-        dbg(binOpNode->getToken());
         if (Token::isMultiplicative(opType)) {
             std::unique_ptr<ASTNode>& left = binOpNode->getLeftRef();
             std::unique_ptr<ASTNode>& right = binOpNode->getRightRef();

@@ -31,6 +31,9 @@ public:
 
     virtual std::string toString() = 0;
     virtual std::unique_ptr<ASTNode> clone() const = 0;
+    virtual std::size_t hash() const {
+        return std::hash<std::string>()(token.getValue()) ^ std::hash<int>()(static_cast<int>(type));
+    }
 };
 
 class AtomNode : public ASTNode {
@@ -47,6 +50,10 @@ public:
 
     std::unique_ptr<ASTNode> clone() const override {
         return std::make_unique<AtomNode>(getToken());
+    }
+
+    std::size_t hash() const override {
+        return std::hash<std::string>()(getToken().getValue());
     }
 };
 
@@ -96,6 +103,11 @@ public:
             right->clone()
         );
     }
+
+    std::size_t hash() const override {
+        return std::hash<std::string>()(getToken().getValue()) ^
+               left->hash() ^ right->hash();
+    }
 };
 
 class UnaryOpNode : public ASTNode {
@@ -133,6 +145,11 @@ public:
             operand->clone()
         );
     }
+    
+    std::size_t hash() const override {
+        return std::hash<std::string>()(getToken().getValue()) ^
+               operand->hash();
+    }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const ASTNode &node) {
@@ -159,3 +176,14 @@ inline std::ostream &operator<<(std::ostream &os, const ASTNode &node) {
     }
     return os;
 }
+
+struct ASTNodePtrHash {
+    std::size_t operator()(const ASTNode* node) const noexcept {
+        return node->hash();
+    }
+};
+struct ASTNodePtrEqual {
+    std::size_t operator()(const ASTNode *node1, const ASTNode* node2) const noexcept {
+        return *node1 == *node2;
+    }
+};
