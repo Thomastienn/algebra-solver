@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "2x + 3x + 4 - x + 2";
+    std::string expr = "x = (-0 - 13)";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -247,22 +247,26 @@ void testEvaluateSpecialCases(){
 }
 
 void testIsolate(){
-    std::string expr = "x - 2*y + 3 = 0";
+    std::string expr = "(x-y)-10 = 0";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
     Tester x;
-    x.isolateVariable(root, "x", true);
+    x.isolateVariable(root, "y", true);
     std::cout << "Isolated: " << root->toString() << "\n";
 }
 
 void testSolve(){
+    // std::vector<std::string> equations = {
+    //     "x + a = b * c",
+    //     "a = b + 2",
+    //     "c = 3",
+    //     "b = 4"
+    // };
     std::vector<std::string> equations = {
-        "x + a = b * c",
-        "a = b + 2",
-        "c = 3",
-        "b = 4"
+        "x+y=3",
+        "x-y=10"
     };
     std::vector<std::unique_ptr<ASTNode>> parsedEquations;
     for (const auto &eq : equations) {
@@ -284,8 +288,8 @@ int main (int argc, char *argv[]) {
     // parseArgs(argc, argv);
 
     // testIsIsolateSide();
-    // testIsolateVariable();
-    // testSimplify();
+    // testIsolate();
+    testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();

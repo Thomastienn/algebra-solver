@@ -6,7 +6,7 @@ std::string Debug::padRight(const std::string &s, size_t width) {
     return s + std::string(width - s.size(), ' ');
 };
 
-bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps) {
+bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::string name) {
     int iterations = 0;
     bool changed = false;
 
@@ -18,7 +18,8 @@ bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector
 
     do {
         if (iterations > Config::MAX_ITERATIONS_CONVERGE_SOLVE){
-            throw std::runtime_error("Simplification did not converge after maximum iterations.");
+            dbg(node->toString());
+            throw std::runtime_error(name + " did not converge after maximum iterations.");
         }
         changed = false;
 

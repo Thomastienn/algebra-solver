@@ -191,7 +191,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         EquationEntry entry = queue.top().clone();
         queue.pop();
 
-        // dbg(entry.equation->toString(), entry.vars, entry.numVariables);
+        dbg(entry.equation->toString(), entry.vars, entry.numVariables);
 
         // No more dependencies, final result
         if (entry.vars.size() == 1) {
@@ -220,7 +220,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                     // dbg("Skipping same equation");
                     continue;
                 }
-                // dbg(var, relatedEq.equation->toString());
+                dbg(var, relatedEq.equation->toString());
                 
                 EquationEntry newEntry = entry.clone();
 
@@ -231,11 +231,12 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 
                 EquationSolver::subsituteVariable(newEntry.equation, var, std::move(assignNode->getRightRef()));
+                dbg("After substitution:", newEntry.equation->toString());
                 this->simplifier.simplify(newEntry.equation);
 
                 newEntry.numVariables += relatedEq.numVariables - 1;
                 newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
-                // dbg(newEntry.equation->toString(), newEntry.numVariables);
+                dbg(newEntry.equation->toString(), newEntry.numVariables);
                 queue.push(std::move(newEntry));
             }
         }

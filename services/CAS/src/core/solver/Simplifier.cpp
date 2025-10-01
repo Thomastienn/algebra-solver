@@ -367,6 +367,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+// BUG: Cause infinite loop
 bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
     // Remove at binary level only since 
     // Deletion at unary and atom level cause ref issues
@@ -650,5 +651,5 @@ bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
         STEP(Simplifier, seperateIntoUnary),
         STEP(Simplifier, combineLikeTerms),
     };
-    return Debug::executeSteps(node, debug, steps);
+    return Debug::executeSteps(node, debug, steps, "Simplifier");
 }
