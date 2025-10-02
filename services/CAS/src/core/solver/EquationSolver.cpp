@@ -188,7 +188,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         EquationEntry entry = queue.top().clone();
         queue.pop();
 
-        // dbg(entry.equation->toString(), entry.vars, entry.numVariables);
+        dbg(entry.equation->toString(), entry.vars, entry.numVariables);
 
         // No more dependencies, final result
         if (entry.numVariables == 1 && entry.vars.count(variable) == 1) {
@@ -222,9 +222,9 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
                 this->isolator.isolateVariable(isolated, var);
-                // dbg("Isolated:", isolated->toString());
+                dbg("Isolated:", isolated->toString());
                 this->simplifier.simplify(isolated);
-                // dbg("Simplified:", isolated->toString());
+                dbg("Simplified:", isolated->toString());
 
                 BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 

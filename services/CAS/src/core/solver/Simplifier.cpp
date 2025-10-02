@@ -102,7 +102,6 @@ bool Simplifier::reduceUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
-// BUG
 bool Simplifier::distributeMinusUnaryInBinary(std::unique_ptr<ASTNode> &node) {
     if (node->getNodeType() == NodeType::Atom) {
         return false;
@@ -195,7 +194,7 @@ bool Simplifier::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
             auto tryDistribute = [&](ASTNode *side, bool isRight) -> bool {
                 if (side->getNodeType() == NodeType::BinaryOp) {
                     BinaryOpNode *sideBinary = static_cast<BinaryOpNode *>(side);
-                    if (sideBinary->getToken() == TokenType::PLUS || sideBinary->getToken() == TokenType::MINUS) {
+                    if (Token::isAdditive(sideBinary->getToken().getType())) {
                         // Distribute multiplication over addition/subtraction
                         Token opToken = sideBinary->getToken();
                         Token multiplyToken(TokenType::MULTIPLY, "*");
@@ -236,12 +235,12 @@ bool Simplifier::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
                 return true;
             }
         }
-        bool leftChanged = distributeMultiplyBinary(binaryNode->getLeftRef());
-        bool rightChanged = distributeMultiplyBinary(binaryNode->getRightRef());
+        bool leftChanged = Simplifier::distributeMultiplyBinary(binaryNode->getLeftRef());
+        bool rightChanged = Simplifier::distributeMultiplyBinary(binaryNode->getRightRef());
         return leftChanged || rightChanged;
     } else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        return distributeMultiplyBinary(unaryNode->getOperandRef());
+        return Simplifier::distributeMultiplyBinary(unaryNode->getOperandRef());
     }
     return false;
 }
@@ -360,6 +359,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             // If there is more than 2 constants, we just replace one of them
             if (randomAtom && removeNodes.size() > 0) {
                 *randomAtom = std::move(newNode);
+                // BUG: Cleaning up using 0 can cause division by zero
                 for(std::unique_ptr<ASTNode>* n: removeNodes) {
                     *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
                 }
@@ -622,6 +622,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
         if (termAllNodes[termStr].size() <= 1) continue;
         runOnce = true;
         // Reset all other nodes to 0
+        // BUG: Reset to 0 can cause division by zero
         for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
             if (termNodes[termStr].second == n) continue;
             *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
