@@ -615,6 +615,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     };
 
     sumUp(nodes);
+    // dbg(termMap);
 
     bool runOnce = false;
     for (const auto& [termStr, coeff] : termMap) {
