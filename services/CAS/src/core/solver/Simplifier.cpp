@@ -367,7 +367,6 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
-// BUG: Cause infinite loop
 bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
     // Remove at binary level only since 
     // Deletion at unary and atom level cause ref issues
@@ -455,13 +454,16 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                     AtomNode *childAtom = static_cast<AtomNode *>(child);
                     if (childAtom->getToken().getType() == TokenType::NUMBER && 
                         Token::getNumericValue(childAtom->getToken()) == 0.0) {
-                        if (binaryNode->getToken() == TokenType::PLUS) {
+                        if (Token::isAdditive(binaryNode->getToken().getType())) {
                             // Replace the entire binary node with the other side
                             node = isLeft ? 
-                                std::move(binaryNode->getRightRef()) : 
-                                std::move(binaryNode->getLeftRef());
+                                std::make_unique<UnaryOpNode>(
+                                    binaryNode->getToken(),
+                                    std::move(binaryNode->getRightRef())
+                                )
+                                : std::move(binaryNode->getLeftRef());
+                            return true;
                         }
-                        return true;
                     }
                 }
             }
