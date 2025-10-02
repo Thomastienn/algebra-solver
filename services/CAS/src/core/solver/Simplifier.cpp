@@ -102,34 +102,42 @@ bool Simplifier::reduceUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
+// BUG
 bool Simplifier::distributeMinusUnaryInBinary(std::unique_ptr<ASTNode> &node) {
     if (node->getNodeType() == NodeType::Atom) {
         return false;
     }
     if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        if (unaryNode->getToken() == TokenType::MINUS) {
+        Token unaryToken = unaryNode->getToken();
+        if (Token::isAdditive(unaryToken.getType())) {
             ASTNode *child = unaryNode->getOperand();
             if (child->getNodeType() == NodeType::BinaryOp) {
                 BinaryOpNode *childBinary = static_cast<BinaryOpNode *>(child);
                 if (!Token::isAdditive(childBinary->getToken().getType())) {
-                    return distributeMinusUnaryInBinary(unaryNode->getOperandRef());
+                    return Simplifier::distributeMinusUnaryInBinary(unaryNode->getOperandRef());
                 }
                 // Distribute the minus to both sides of the binary operation
                 Token plusToken(TokenType::PLUS, "+");
                 Token minusToken(TokenType::MINUS, "-");
 
-                auto newLeft = std::make_unique<UnaryOpNode>(minusToken, std::move(childBinary->getLeftRef()));
-                auto newRight = std::make_unique<UnaryOpNode>(minusToken, std::move(childBinary->getRightRef()));
+                auto newLeft = std::make_unique<UnaryOpNode>(unaryToken, std::move(childBinary->getLeftRef()));
+                auto newRight = std::make_unique<UnaryOpNode>(
+                    Token::mergeUnaryToken(
+                        unaryToken, 
+                        childBinary->getToken()
+                    ),
+                    std::move(childBinary->getRightRef())
+                );
                 node = std::make_unique<BinaryOpNode>(plusToken, std::move(newLeft), std::move(newRight));
                 return true;
             }
         }
-        return distributeMinusUnaryInBinary(unaryNode->getOperandRef());
+        return Simplifier::distributeMinusUnaryInBinary(unaryNode->getOperandRef());
     } else if (node->getNodeType() == NodeType::BinaryOp) {
         BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
-        bool leftChanged = distributeMinusUnaryInBinary(binaryNode->getLeftRef());
-        bool rightChanged = distributeMinusUnaryInBinary(binaryNode->getRightRef());
+        bool leftChanged = Simplifier::distributeMinusUnaryInBinary(binaryNode->getLeftRef());
+        bool rightChanged = Simplifier::distributeMinusUnaryInBinary(binaryNode->getRightRef());
         return leftChanged || rightChanged;
     }
     return false;
@@ -454,13 +462,16 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                     AtomNode *childAtom = static_cast<AtomNode *>(child);
                     if (childAtom->getToken().getType() == TokenType::NUMBER && 
                         Token::getNumericValue(childAtom->getToken()) == 0.0) {
-                        if (binaryNode->getToken() == TokenType::PLUS) {
+                        if (Token::isAdditive(binaryNode->getToken().getType())) {
                             // Replace the entire binary node with the other side
                             node = isLeft ? 
-                                std::move(binaryNode->getRightRef()) : 
-                                std::move(binaryNode->getLeftRef());
+                                std::make_unique<UnaryOpNode>(
+                                    binaryNode->getToken(),
+                                    std::move(binaryNode->getRightRef())
+                                )
+                                : std::move(binaryNode->getLeftRef());
+                            return true;
                         }
-                        return true;
                     }
                 }
             }
@@ -651,5 +662,5 @@ bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
         STEP(Simplifier, seperateIntoUnary),
         STEP(Simplifier, combineLikeTerms),
     };
-    return Debug::executeSteps(node, debug, steps);
+    return Debug::executeSteps(node, debug, steps, "Simplifier");
 }

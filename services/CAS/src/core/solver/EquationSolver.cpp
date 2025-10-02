@@ -176,9 +176,6 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
     // }
     
     // Start with equation contains the variable
-    // TODO: Do heuristic search in the future
-    // Instead of BSF, use A* or Dijkstra to find the shortest path
-
     // For now, the strategy is prioritize reducing the number of dependencies
 
     int iterations = 0;
@@ -194,7 +191,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         // dbg(entry.equation->toString(), entry.vars, entry.numVariables);
 
         // No more dependencies, final result
-        if (entry.vars.size() == 1) {
+        if (entry.numVariables == 1 && entry.vars.count(variable) == 1) {
             // Isolate the variable
             std::unique_ptr<ASTNode> isolated = entry.equation->clone();
             this->isolator.isolateVariable(isolated, variable);
@@ -202,7 +199,6 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
             return isolated;
         }
 
-        // WARNING: There could be a loop of dependencies
         for (std::string var: entry.vars){
             // dbg("Processing variable", var);
             // Do not replace the variable we want to solve
@@ -226,14 +222,17 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
                 this->isolator.isolateVariable(isolated, var);
+                // dbg("Isolated:", isolated->toString());
                 this->simplifier.simplify(isolated);
+                // dbg("Simplified:", isolated->toString());
 
                 BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 
                 EquationSolver::subsituteVariable(newEntry.equation, var, std::move(assignNode->getRightRef()));
+                // dbg("After substitution:", newEntry.equation->toString());
                 this->simplifier.simplify(newEntry.equation);
 
-                newEntry.numVariables += relatedEq.numVariables - 1;
+                newEntry.numVariables = ASTUtils::countVariableOccurrences(newEntry.equation);
                 newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
                 // dbg(newEntry.equation->toString(), newEntry.numVariables);
                 queue.push(std::move(newEntry));

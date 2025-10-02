@@ -42,5 +42,5 @@ class Debug {
 private:
     static std::string padRight(const std::string &s, size_t width);
 public:
-    static bool executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps);
+    static bool executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::string name);
 };

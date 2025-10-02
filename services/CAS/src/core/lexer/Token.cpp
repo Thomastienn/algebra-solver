@@ -139,3 +139,10 @@ TokenType Token::mergeUnaryToken(const TokenType &unary1, const TokenType &unary
         (unary2 == TokenType::MINUS);
     return (numMinus % 2 == 0) ? TokenType::PLUS : TokenType::MINUS;
 }
+Token Token::mergeUnaryToken(const Token &unary1, const Token &unary2) {
+    TokenType mergedType = Token::mergeUnaryToken(unary1.getType(), unary2.getType());
+    return Token(
+        mergedType, 
+        std::string(1, Token::operationToChr(mergedType))
+    );
+}
