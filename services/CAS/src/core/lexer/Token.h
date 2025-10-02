@@ -71,6 +71,7 @@ public:
 
     /* Merge +, -, Return unary token */
     static TokenType mergeUnaryToken(const TokenType &unary1, const TokenType &unary2);
+    static Token mergeUnaryToken(const Token &unary1, const Token &unary2);
 
     static std::tuple<float, float> getBindingPower(const TokenType &type);
 
