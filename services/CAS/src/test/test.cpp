@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "y = -((0 + 10) - x)";
+    std::string expr = "(x + (10 + x)) = 0";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
