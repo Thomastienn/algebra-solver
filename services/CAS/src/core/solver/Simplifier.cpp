@@ -3,6 +3,7 @@
 #include <cassert>
 
 
+// BUG: flatten handle incorrectly when flatten even denominators with normal additives
 std::vector<flattenN> Simplifier::flattenNode(
     std::unique_ptr<ASTNode>& node, 
     bool negate
@@ -359,7 +360,6 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             // If there is more than 2 constants, we just replace one of them
             if (randomAtom && removeNodes.size() > 0) {
                 *randomAtom = std::move(newNode);
-                // BUG: Cleaning up using 0 can cause division by zero
                 for(std::unique_ptr<ASTNode>* n: removeNodes) {
                     *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
                 }
@@ -515,9 +515,6 @@ bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
-// BUG
-// THe thing is we sum it up as positive 
-// But the - from unary or binary still cause it to be wrong value
 bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     // Check if one side is a number and the other is a variable
     auto isNumber = [](ASTNode *n) -> bool {
@@ -622,7 +619,6 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
         if (termAllNodes[termStr].size() <= 1) continue;
         runOnce = true;
         // Reset all other nodes to 0
-        // BUG: Reset to 0 can cause division by zero
         for(std::unique_ptr<ASTNode>* & n : termAllNodes[termStr]){
             if (termNodes[termStr].second == n) continue;
             *n = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));

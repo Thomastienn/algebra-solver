@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "(e = (+((0 + 20) - ((((2 * a) + b) + (2 * c)) - d)) / 3))";
+    std::string expr = "e = (20 - ((((2 * a) + b) + (2 * c)) - d)) / 3";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));

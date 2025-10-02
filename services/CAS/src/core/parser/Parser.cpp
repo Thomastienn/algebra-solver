@@ -51,7 +51,7 @@ std::unique_ptr<ASTNode> Parser::parse(float cur_bp) {
             lexer->getNextToken(); // consume the operator
         }
 
-        std::unique_ptr<ASTNode> right = parse(right_bp);
+        std::unique_ptr<ASTNode> right = Parser::parse(right_bp);
         left = std::make_unique<BinaryOpNode>(token, std::move(left), std::move(right));
     }
 
