@@ -211,7 +211,7 @@ void testCombineLikeTerms(){
 }
 
 void testFlatten(){
-    std::string expr = "x - (2y + -3)";
+    std::string expr = "(20 - ((((2 * a) + b) + (2 * c)) - d)) / 3";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -292,7 +292,7 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolate();
-    testSimplify();
+    // testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
@@ -305,6 +305,6 @@ int main (int argc, char *argv[]) {
     // testDistributeMultiplyBinary();
     // testSocketClient();
     
-    // testSolve();
+    testSolve();
     return 0;
 }

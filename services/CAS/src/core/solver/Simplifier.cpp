@@ -3,7 +3,6 @@
 #include <cassert>
 
 
-// BUG: flatten handle incorrectly when flatten even denominators with normal additives
 std::vector<flattenN> Simplifier::flattenNode(
     std::unique_ptr<ASTNode>& node, 
     bool negate
@@ -284,7 +283,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
         }
 
         // Flatten nested operations of the same type
-        if (left && right) {
+        if (left && right && Token::isAdditive(binaryNode->getToken().getType())) {
             std::vector<flattenN> flatLeft = Simplifier::flattenNode(binaryNode->getLeftRef());
             std::vector<flattenN> flatRight = Simplifier::flattenNode(
                 binaryNode->getRightRef(), 
