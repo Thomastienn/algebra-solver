@@ -10,12 +10,14 @@ struct EquationEntry {
     std::unique_ptr<ASTNode> equation;
     std::unordered_set<std::string> vars;
     int numVariables;
+    int distinctVariables;
 
     EquationEntry(
         std::unique_ptr<ASTNode> eq,
         std::unordered_set<std::string> vars,
-        int numVars
-    ) : equation(std::move(eq)), vars(vars), numVariables(numVars){}
+        int numVars,
+        int distinctVars
+    ) : equation(std::move(eq)), vars(vars), numVariables(numVars), distinctVariables(distinctVars) {}
 
     bool operator==(const EquationEntry &other) const {
         return this->equation->toString() == other.equation->toString();
@@ -26,12 +28,16 @@ struct EquationEntry {
     }
     
     // Less variables -> higher priority
+    // Distinct variables take precedence
     bool operator<(const EquationEntry &other) const {
-        return this->numVariables > other.numVariables;
+        if (this->distinctVariables == other.distinctVariables) {
+            return this->numVariables > other.numVariables;
+        }
+        return this->distinctVariables > other.distinctVariables;
     }
     
     EquationEntry clone() const {
-        return EquationEntry(this->equation->clone(), this->vars, this->numVariables);
+        return EquationEntry(this->equation->clone(), this->vars, this->numVariables, this->distinctVariables);
     }
 };
 

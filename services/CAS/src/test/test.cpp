@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "(x + (10 + x)) = 0";
+    std::string expr = "(x + (-10 + x)) - 3 = 0";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -289,7 +289,7 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolate();
-    // testSimplify();
+    testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
@@ -302,6 +302,6 @@ int main (int argc, char *argv[]) {
     // testDistributeMultiplyBinary();
     // testSocketClient();
     
-    testSolve();
+    // testSolve();
     return 0;
 }
