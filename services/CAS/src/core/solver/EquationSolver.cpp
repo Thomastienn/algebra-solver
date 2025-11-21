@@ -237,7 +237,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 int newNumVariables = ASTUtils::countVariableOccurrences(newEntry.equation);
                 int newDistinctVariables = ASTUtils::countDistinctVariables(newEntry.equation);
 
-                if (((float)newDistinctVariables / entry.distinctVariables) > 1.2) {
+                if (((float)newDistinctVariables / entry.distinctVariables) > 1.5) {
                     // dbg("Skipping, more variables");
                     continue;
                 }

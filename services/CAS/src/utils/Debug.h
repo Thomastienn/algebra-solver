@@ -41,6 +41,7 @@ namespace Table {
 class Debug {
 private:
     static std::string padRight(const std::string &s, size_t width);
+    static void validateNode(const std::unique_ptr<ASTNode>& node, const std::string& name);
 public:
-    static bool executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::string name);
+    static bool executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::string name, bool validate = false);
 };

@@ -6,7 +6,24 @@ std::string Debug::padRight(const std::string &s, size_t width) {
     return s + std::string(width - s.size(), ' ');
 };
 
-bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::string name) {
+void Debug::validateNode(const std::unique_ptr<ASTNode>& node, const std::string& name) {
+    if (node->getNodeType() == NodeType::Atom){
+        string val = node->toString();
+        if (val.find("-") != std::string::npos){
+            throw std::runtime_error("Validation failed in " + name + ": Atom node contains negative number: " + val);
+        }
+    } else if (node->getNodeType() == NodeType::UnaryOp){
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        ASTNode *child = unaryNode->getOperand();
+        Debug::validateNode(unaryNode->getOperandRef(), name);
+    } else if (node->getNodeType() == NodeType::BinaryOp){
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        Debug::validateNode(binaryNode->getLeftRef(), name);
+        Debug::validateNode(binaryNode->getRightRef(), name);
+    }
+}
+
+bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector<Table::Step>& steps, std::string name, bool validate) {
     int iterations = 0;
     bool changed = false;
 
@@ -31,6 +48,9 @@ bool Debug::executeSteps(std::unique_ptr<ASTNode>& node, bool debug, std::vector
             s.result = s.func();
             changed |= s.result;
             s.nodeStrAfter = node->toString();
+            if (validate){
+                Debug::validateNode(node, s.name);
+            }
         }
 
         // build separator like: +-----+------+------+

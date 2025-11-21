@@ -30,7 +30,7 @@ int ASTUtils::countVariableOccurrences(std::unique_ptr<ASTNode>& node) {
     return 0;   
 }
 
-int countDisinctVariableHelper(std::unique_ptr<ASTNode>& node, std::unordered_set<std::string>& varSet) {
+void countDisinctVariableHelper(std::unique_ptr<ASTNode>& node, std::unordered_set<std::string>& varSet) {
     if (node->getNodeType() == NodeType::Atom) {
         AtomNode *atomNode = static_cast<AtomNode *>(node.get());
         if (atomNode->getToken().getType() == TokenType::VARIABLE) {
@@ -44,10 +44,10 @@ int countDisinctVariableHelper(std::unique_ptr<ASTNode>& node, std::unordered_se
         countDisinctVariableHelper(binaryNode->getLeftRef(), varSet);
         countDisinctVariableHelper(binaryNode->getRightRef(), varSet);
     }
-    return varSet.size();
 }
 
 int ASTUtils::countDistinctVariables(std::unique_ptr<ASTNode>& node) {
     std::unordered_set<std::string> varSet;
-    return countDisinctVariableHelper(node, varSet);
+    countDisinctVariableHelper(node, varSet);
+    return varSet.size();
 }
