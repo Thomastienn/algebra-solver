@@ -1,6 +1,7 @@
 #include "Evaluation.h"
 #include "../lexer/Token.h"
 #include <cmath>
+#include "../../utils/Debug.h"
 
 void Evaluation::reset() {
     Evaluation::variables.clear();

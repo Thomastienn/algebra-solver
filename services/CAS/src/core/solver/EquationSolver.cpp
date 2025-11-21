@@ -147,9 +147,10 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         
         std::unordered_set<std::string> vars = EquationSolver::extractVariables(normalized);
         int numVars = ASTUtils::countVariableOccurrences(normalized);
+        int distinctVars = ASTUtils::countDistinctVariables(normalized);
 
         bool containsVar = ASTUtils::containsVariable(normalized, variable);
-        EquationEntry entry(std::move(normalized), vars, numVars);
+        EquationEntry entry(std::move(normalized), vars, numVars, distinctVars);
 
         // Build graph connections
         // Eq 1: a = b + c (variables: a,b,c)
@@ -188,7 +189,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         EquationEntry entry = queue.top().clone();
         queue.pop();
 
-        // dbg(entry.equation->toString(), entry.vars, entry.numVariables);
+        dbg(entry.equation->toString(), entry.vars, entry.numVariables);
 
         // No more dependencies, final result
         if (entry.numVariables == 1 && entry.vars.count(variable) == 1) {
@@ -222,17 +223,27 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
                 this->isolator.isolateVariable(isolated, var);
-                // dbg("Isolated:", isolated->toString());
+                dbg("Isolated:", isolated->toString());
                 this->simplifier.simplify(isolated);
-                // dbg("Simplified:", isolated->toString());
+                dbg("Simplified:", isolated->toString());
 
                 BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 
                 EquationSolver::subsituteVariable(newEntry.equation, var, std::move(assignNode->getRightRef()));
-                // dbg("After substitution:", newEntry.equation->toString());
+                dbg("After substitution:", newEntry.equation->toString());
                 this->simplifier.simplify(newEntry.equation);
+                dbg("After simplification:", newEntry.equation->toString());
 
-                newEntry.numVariables = ASTUtils::countVariableOccurrences(newEntry.equation);
+                int newNumVariables = ASTUtils::countVariableOccurrences(newEntry.equation);
+                int newDistinctVariables = ASTUtils::countDistinctVariables(newEntry.equation);
+
+                if (((float)newDistinctVariables / entry.distinctVariables) > 1.5) {
+                    // dbg("Skipping, more variables");
+                    continue;
+                }
+
+                newEntry.numVariables = newNumVariables;
+                newEntry.distinctVariables = newDistinctVariables;
                 newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
                 // dbg(newEntry.equation->toString(), newEntry.numVariables);
                 queue.push(std::move(newEntry));

@@ -29,3 +29,25 @@ int ASTUtils::countVariableOccurrences(std::unique_ptr<ASTNode>& node) {
     }
     return 0;   
 }
+
+void countDisinctVariableHelper(std::unique_ptr<ASTNode>& node, std::unordered_set<std::string>& varSet) {
+    if (node->getNodeType() == NodeType::Atom) {
+        AtomNode *atomNode = static_cast<AtomNode *>(node.get());
+        if (atomNode->getToken().getType() == TokenType::VARIABLE) {
+            varSet.insert(atomNode->getToken().getValue());
+        }
+    } else if (node->getNodeType() == NodeType::UnaryOp) {
+        UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
+        countDisinctVariableHelper(unaryNode->getOperandRef(), varSet);
+    } else if (node->getNodeType() == NodeType::BinaryOp) {
+        BinaryOpNode *binaryNode = static_cast<BinaryOpNode *>(node.get());
+        countDisinctVariableHelper(binaryNode->getLeftRef(), varSet);
+        countDisinctVariableHelper(binaryNode->getRightRef(), varSet);
+    }
+}
+
+int ASTUtils::countDistinctVariables(std::unique_ptr<ASTNode>& node) {
+    std::unordered_set<std::string> varSet;
+    countDisinctVariableHelper(node, varSet);
+    return varSet.size();
+}

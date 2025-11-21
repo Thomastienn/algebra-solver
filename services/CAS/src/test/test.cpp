@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "(x + (10 + x)) = 0";
+    std::string expr = "(x + (-1 + x)) - 3 = 0";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -84,7 +84,7 @@ void testSimplify() {
     std::cout << "Original: " << root->toString() << "\n";
     Tester x;
 
-    x.simplify(root, true);
+    x.simplify(root, true, true);
     std::cout << "Simplified: " << root->toString() << "\n";
 }
 
@@ -211,7 +211,7 @@ void testCombineLikeTerms(){
 }
 
 void testFlatten(){
-    std::string expr = "x - (2y + -3)";
+    std::string expr = "(20 - ((((2 * a) + b) + (2 * c)) - d)) / 3";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
@@ -264,9 +264,17 @@ void testSolve(){
     //     "c = 3",
     //     "b = 4"
     // };
+    // std::vector<std::string> equations = {
+    //     "a + b + c + d + e = 15",
+    //     "2a - b + c - d + e = 8",
+    //     "3a + 2b - c + d - e = 12",
+    //     "a - 2b + 3c + d + e = 10",
+    //     "2a + b + 2c - d + 3e = 20"
+    // };
+    string variable = "x";
     std::vector<std::string> equations = {
-        "x+y=3",
-        "x-y=10"
+        "x + y = 3",
+        "x - y = 1"
     };
     std::vector<std::unique_ptr<ASTNode>> parsedEquations;
     for (const auto &eq : equations) {
@@ -275,7 +283,7 @@ void testSolve(){
         parsedEquations.push_back(parser.parse());
     }
     Tester solver;
-    auto solution = solver.solve(parsedEquations, "x");
+    auto solution = solver.solve(parsedEquations, variable);
     if (solution) {
         std::cout << "Solution for x: " << solution->toString() << "\n";
     } else {
@@ -289,7 +297,7 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolate();
-    // testSimplify();
+    testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
@@ -302,6 +310,6 @@ int main (int argc, char *argv[]) {
     // testDistributeMultiplyBinary();
     // testSocketClient();
     
-    testSolve();
+    // testSolve();
     return 0;
 }

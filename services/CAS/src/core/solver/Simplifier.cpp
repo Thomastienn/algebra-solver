@@ -102,7 +102,6 @@ bool Simplifier::reduceUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
-// BUG
 bool Simplifier::distributeMinusUnaryInBinary(std::unique_ptr<ASTNode> &node) {
     if (node->getNodeType() == NodeType::Atom) {
         return false;
@@ -195,7 +194,7 @@ bool Simplifier::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
             auto tryDistribute = [&](ASTNode *side, bool isRight) -> bool {
                 if (side->getNodeType() == NodeType::BinaryOp) {
                     BinaryOpNode *sideBinary = static_cast<BinaryOpNode *>(side);
-                    if (sideBinary->getToken() == TokenType::PLUS || sideBinary->getToken() == TokenType::MINUS) {
+                    if (Token::isAdditive(sideBinary->getToken().getType())) {
                         // Distribute multiplication over addition/subtraction
                         Token opToken = sideBinary->getToken();
                         Token multiplyToken(TokenType::MULTIPLY, "*");
@@ -236,12 +235,12 @@ bool Simplifier::distributeMultiplyBinary(std::unique_ptr<ASTNode> &node) {
                 return true;
             }
         }
-        bool leftChanged = distributeMultiplyBinary(binaryNode->getLeftRef());
-        bool rightChanged = distributeMultiplyBinary(binaryNode->getRightRef());
+        bool leftChanged = Simplifier::distributeMultiplyBinary(binaryNode->getLeftRef());
+        bool rightChanged = Simplifier::distributeMultiplyBinary(binaryNode->getRightRef());
         return leftChanged || rightChanged;
     } else if (node->getNodeType() == NodeType::UnaryOp) {
         UnaryOpNode *unaryNode = static_cast<UnaryOpNode *>(node.get());
-        return distributeMultiplyBinary(unaryNode->getOperandRef());
+        return Simplifier::distributeMultiplyBinary(unaryNode->getOperandRef());
     }
     return false;
 }
@@ -278,22 +277,38 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                     binaryNode->getToken(), 
                     rightAtom->getToken()
                 );
-                node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(result)));
+                if (result < 0){
+                    node = std::make_unique<UnaryOpNode>(
+                        Token(TokenType::MINUS, "-"), 
+                        std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-result)))
+                    );
+                } else {
+                    node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(result)));
+                }
                 return true;
             }
         }
 
         // Flatten nested operations of the same type
-        if (left && right) {
+        if (left && right && Token::isAdditive(binaryNode->getToken().getType())) {
             std::vector<flattenN> flatLeft = Simplifier::flattenNode(binaryNode->getLeftRef());
             std::vector<flattenN> flatRight = Simplifier::flattenNode(
                 binaryNode->getRightRef(), 
                 binaryNode->getToken() == TokenType::ASSIGN || binaryNode->getToken() == TokenType::MINUS
             );
+            // for(flattenN &n : flatLeft){
+            //     dbg("left", (*n.node)->toString() + (n.negate ? " (neg)" : ""));
+            // }
+            // for(flattenN &n : flatRight){
+            //     dbg("right", (*n.node)->toString() + (n.negate ? " (neg)" : ""));
+            // }
 
             double finalResult = 0.0;
             std::unique_ptr<ASTNode>* randomAtom = nullptr;
+            bool randomNegate = false;
+            bool randomUnaryNegate = false;
             std::vector<std::unique_ptr<ASTNode>*> removeNodes;
+            
             auto sumUp = [&](std::vector<flattenN> &nodes){
                 for(flattenN &n: nodes){
                     if (
@@ -307,6 +322,7 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                         if (val != 0) {
                             if (!randomAtom) {
                                 randomAtom = n.node;
+                                randomNegate = n.negate;
                                 removeNodes.pop_back();
                             }
                         } else {
@@ -332,6 +348,8 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                             if (val != 0) {
                                 if (!randomAtom) {
                                     randomAtom = &unaryNode->getOperandRef();
+                                    randomNegate = n.negate;
+                                    randomUnaryNegate = unaryNode->getToken() == TokenType::MINUS;
                                     removeNodes.pop_back();
                                 }
                             } else {
@@ -348,13 +366,16 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
             // So if we fixed the node on the negated side
             // We have to convert it back
             std::unique_ptr<ASTNode> newNode;
-            if (finalResult < 0){
+
+            float absFinal = abs(finalResult);
+
+            if (randomNegate ^ randomUnaryNegate ^ (finalResult < 0)) {
                 newNode = std::make_unique<UnaryOpNode>(
                     Token(TokenType::MINUS, "-"), 
-                    std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-finalResult)))
+                    std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absFinal)))
                 );
             } else {
-                newNode = std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(finalResult)));
+                newNode = std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(absFinal)));
             }
 
             // If there is more than 2 constants, we just replace one of them
@@ -515,9 +536,6 @@ bool Simplifier::seperateIntoUnary(std::unique_ptr<ASTNode> &node) {
     return false;
 }
 
-// BUG
-// THe thing is we sum it up as positive 
-// But the - from unary or binary still cause it to be wrong value
 bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     // Check if one side is a number and the other is a variable
     auto isNumber = [](ASTNode *n) -> bool {
@@ -651,7 +669,7 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
     return runOnce;
 }
 
-bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
+bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug, bool validate) {
     std::vector<Table::Step> steps = {
         STEP(Simplifier, reduceUnary),
         STEP(Simplifier, distributeMinusUnaryInBinary),
@@ -662,5 +680,5 @@ bool Simplifier::simplify(std::unique_ptr<ASTNode> &node, bool debug) {
         STEP(Simplifier, seperateIntoUnary),
         STEP(Simplifier, combineLikeTerms),
     };
-    return Debug::executeSteps(node, debug, steps, "Simplifier");
+    return Debug::executeSteps(node, debug, steps, "Simplifier", validate);
 }
