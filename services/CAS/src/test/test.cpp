@@ -76,7 +76,7 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "(x + (-1 + x)) - 3 = 0";
+    std::string expr = "a = -(-(0 - 40) / 2)";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -264,18 +264,18 @@ void testSolve(){
     //     "c = 3",
     //     "b = 4"
     // };
-    // std::vector<std::string> equations = {
-    //     "a + b + c + d + e = 15",
-    //     "2a - b + c - d + e = 8",
-    //     "3a + 2b - c + d - e = 12",
-    //     "a - 2b + 3c + d + e = 10",
-    //     "2a + b + 2c - d + 3e = 20"
-    // };
-    string variable = "x";
     std::vector<std::string> equations = {
-        "x + y = 3",
-        "x - y = 1"
+        "a + b + c + d + e = 15",
+        "2a - b + c - d + e = 8",
+        "3a + 2b - c + d - e = 12",
+        "a - 2b + 3c + d + e = 10",
+        "2a + b + 2c - d + 3e = 20"
     };
+    string variable = "a";
+    // std::vector<std::string> equations = {
+    //     "x + y = 3",
+    //     "x - y = 1"
+    // };
     std::vector<std::unique_ptr<ASTNode>> parsedEquations;
     for (const auto &eq : equations) {
         std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(eq);
@@ -285,7 +285,7 @@ void testSolve(){
     Tester solver;
     auto solution = solver.solve(parsedEquations, variable);
     if (solution) {
-        std::cout << "Solution for x: " << solution->toString() << "\n";
+        std::cout << "Solution for " << variable << ": " << solution->toString() << "\n";
     } else {
         std::cout << "No solution found for x.\n";
     }

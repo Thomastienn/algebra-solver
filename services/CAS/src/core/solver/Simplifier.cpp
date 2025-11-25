@@ -664,6 +664,8 @@ bool Simplifier::combineLikeTerms(std::unique_ptr<ASTNode> &node){
                     repNode.node->get()->clone()
                 );
             }
+        } else {
+            *parentNode = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
         }  
     }
     return runOnce;

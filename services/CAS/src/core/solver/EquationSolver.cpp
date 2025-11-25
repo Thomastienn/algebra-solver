@@ -1,6 +1,7 @@
 #include "EquationSolver.h"
 #include <iostream>
 #include <queue>
+#include <climits>
 #include "../../utils/ASTUtils.h"
 #include "../../utils/Debug.h"
 #include "../../utils/Config.h"
@@ -133,6 +134,8 @@ std::unordered_set<std::string> EquationSolver::dependencies(const std::string &
 }
 
 
+// TODO: This current approach is brute forcing with heuristic paths
+// We will implement further optimizations like Gauss elimination later
 std::unique_ptr<ASTNode> EquationSolver::solve(
     std::vector<std::unique_ptr<ASTNode>>& equations,
     const std::string &variable
@@ -180,6 +183,10 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
     // For now, the strategy is prioritize reducing the number of dependencies
 
     int iterations = 0;
+    std::unordered_set<std::string> visited;
+    int bestDistinctVars = INT_MAX;
+    int iterationsSinceImprovement = 0;
+    
     while (!queue.empty()){
         iterations++;
         if (iterations > Config::MAX_ITERATIONS_CONVERGE_SOLVE) {
@@ -189,22 +196,120 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         EquationEntry entry = queue.top().clone();
         queue.pop();
 
-        dbg(entry.equation->toString(), entry.vars, entry.numVariables);
+        // Already did this one
+        std::string eqStr = entry.equation->toString();
+        if (visited.count(eqStr) > 0) {
+            continue;
+        }
+        visited.insert(eqStr);
 
-        // No more dependencies, final result
-        if (entry.numVariables == 1 && entry.vars.count(variable) == 1) {
-            // Isolate the variable
-            std::unique_ptr<ASTNode> isolated = entry.equation->clone();
-            this->isolator.isolateVariable(isolated, variable);
-            this->simplifier.simplify(isolated);
-            return isolated;
+        // dbg(entry.equation->toString(), entry.vars, entry.numVariables, entry.distinctVariables);
+
+        // Did improve distinct variable count
+        if (entry.distinctVariables < bestDistinctVars) {
+            bestDistinctVars = entry.distinctVariables;
+            iterationsSinceImprovement = 0;
+        } else {
+            // Don't count as "no improvement" if we're processing a 2-variable equation
+            // that contains the target variable, these are promising
+            if (!(entry.distinctVariables == 2 && entry.vars.count(variable) > 0)) {
+                iterationsSinceImprovement++;
+                if (iterationsSinceImprovement > Config::MAX_ITERATIONS_WITHOUT_IMPROVEMENT) {
+                    std::cerr << "Stuck at " << bestDistinctVars << " variables after " 
+                              << Config::MAX_ITERATIONS_WITHOUT_IMPROVEMENT << " iterations without improvement" << std::endl;
+                    return nullptr;
+                }
+            }
         }
 
-        for (std::string var: entry.vars){
+        // No more dependencies, final result - but only if it's the variable we're solving for!
+        if (entry.numVariables == 1 && entry.vars.count(variable) == 1) {
+            std::unique_ptr<ASTNode> isolated = entry.equation->clone();
+            // dbg("Initial", isolated->toString());
+            this->isolator.isolateVariable(isolated, variable);
+            // dbg("Isolated", isolated->toString());
+            this->simplifier.simplify(isolated);
+            // dbg("Simplify", isolated->toString());
+            return isolated;
+        }
+        
+        // If we have a 1-variable equation but it's not our target:
+        // Still useful! Isolate it and use it to create new substituted equations
+        if (entry.numVariables == 1 && entry.vars.count(variable) == 0) {
+            // Get the variable name (the only one in the set)
+            std::string solvedVar = *entry.vars.begin();
+            
+            // Isolate this variable to get its value
+            std::unique_ptr<ASTNode> isolated = entry.equation->clone();
+            this->isolator.isolateVariable(isolated, solvedVar);
+            this->simplifier.simplify(isolated);
+            
+            // Extract the value (right side of assignment)
+            if (isolated->getNodeType() == NodeType::BinaryOp) {
+                BinaryOpNode* assignNode = static_cast<BinaryOpNode*>(isolated.get());
+                std::unique_ptr<ASTNode> solvedValue = assignNode->getRightRef()->clone();
+                
+                // Now substitute this into ALL related equations that contain this variable
+                if (varToEquation.find(solvedVar) != varToEquation.end()) {
+                    std::vector<EquationEntry>& relatedEqs = varToEquation.at(solvedVar);
+                    for (EquationEntry& relatedEq : relatedEqs) {
+                        // Skip if it's the same equation or if it doesn't help us get to target
+                        if (relatedEq.equation->toString() == entry.equation->toString()) {
+                            continue;
+                        }
+                        if (relatedEq.vars.count(variable) == 0) {
+                            // Doesn't contain target variable, not useful
+                            continue;
+                        }
+                        
+                        // Create new entry with substitution
+                        EquationEntry newEntry = relatedEq.clone();
+                        EquationSolver::subsituteVariable(newEntry.equation, solvedVar, solvedValue->clone());
+                        this->simplifier.simplify(newEntry.equation);
+                        
+                        int newNumVars = ASTUtils::countVariableOccurrences(newEntry.equation);
+                        int newDistinctVars = ASTUtils::countDistinctVariables(newEntry.equation);
+                        
+                        // Only add if it reduces complexity
+                        if (newDistinctVars < relatedEq.distinctVariables) {
+                            newEntry.numVariables = newNumVars;
+                            newEntry.distinctVariables = newDistinctVars;
+                            newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
+                            
+                            // Add to varToEquation map
+                            for (const std::string &v : newEntry.vars) {
+                                varToEquation[v].push_back(newEntry.clone());
+                            }
+                            
+                            queue.push(std::move(newEntry));
+                        }
+                    }
+                }
+            }
+            
+            // Continue searching for target variable
+            continue;
+        }
+
+        std::unordered_set<std::string> varsToProcess = entry.vars;
+        for (const std::string& var: varsToProcess){
             // dbg("Processing variable", var);
             // Do not replace the variable we want to solve
             if (var == variable) {
                 continue;
+            }
+
+            // Already use this variable
+            if (entry.varToIsolatedEquation.find(var) != entry.varToIsolatedEquation.end()) {
+                // Replace this var with the already isolated equation
+                std::unique_ptr<ASTNode> substitution = entry.varToIsolatedEquation.at(var)->clone();
+                EquationSolver::subsituteVariable(entry.equation, var, std::move(substitution));
+                this->simplifier.simplify(entry.equation);
+                entry.numVariables = ASTUtils::countVariableOccurrences(entry.equation);
+                entry.distinctVariables = ASTUtils::countDistinctVariables(entry.equation);
+                entry.vars = EquationSolver::extractVariables(entry.equation);
+                queue.push(std::move(entry));
+                break;
             }
             // No equation to derive this variable
             if (varToEquation.find(var) == varToEquation.end()) {
@@ -223,21 +328,24 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
                 this->isolator.isolateVariable(isolated, var);
-                dbg("Isolated:", isolated->toString());
+                // dbg("Isolated:", isolated->toString());
                 this->simplifier.simplify(isolated);
-                dbg("Simplified:", isolated->toString());
+                // dbg("Simplified:", isolated->toString());
 
+                if (isolated->getNodeType() != NodeType::BinaryOp) {
+                    throw std::runtime_error("Isolated equation is not a binary operation");
+                }
                 BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 
-                EquationSolver::subsituteVariable(newEntry.equation, var, std::move(assignNode->getRightRef()));
-                dbg("After substitution:", newEntry.equation->toString());
+                EquationSolver::subsituteVariable(newEntry.equation, var, assignNode->getRightRef()->clone());
+                // dbg("After substitution:", newEntry.equation->toString());
                 this->simplifier.simplify(newEntry.equation);
-                dbg("After simplification:", newEntry.equation->toString());
+                // dbg("After simplification:", newEntry.equation->toString());
 
                 int newNumVariables = ASTUtils::countVariableOccurrences(newEntry.equation);
                 int newDistinctVariables = ASTUtils::countDistinctVariables(newEntry.equation);
 
-                if (((float)newDistinctVariables / entry.distinctVariables) > 1.5) {
+                if (((float)newDistinctVariables / entry.distinctVariables) > Config::LIMIT_RATIO_NEW_DISTINCT_VARS) {
                     // dbg("Skipping, more variables");
                     continue;
                 }
@@ -245,6 +353,14 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 newEntry.numVariables = newNumVariables;
                 newEntry.distinctVariables = newDistinctVariables;
                 newEntry.vars = EquationSolver::extractVariables(newEntry.equation);
+
+                // Add this derived equation to varToEquation so it can be used in future substitutions
+                for (const std::string &v : newEntry.vars) {
+                    varToEquation[v].push_back(newEntry.clone());
+                }
+                
+                newEntry.varToIsolatedEquation[var] = isolated->clone();
+                
                 // dbg(newEntry.equation->toString(), newEntry.numVariables);
                 queue.push(std::move(newEntry));
             }
