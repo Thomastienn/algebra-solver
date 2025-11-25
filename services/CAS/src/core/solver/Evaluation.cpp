@@ -38,18 +38,20 @@ double Evaluation::evaluate(const ASTNode* node) {
             return Evaluation::evaluateExpression(leftVal, opToken, rightVal);
         }
         case NodeType::UnaryOp: {
-            const UnaryOpNode* unNode = dynamic_cast<const UnaryOpNode*>(node);
-            if (!unNode) {
-                throw std::runtime_error("Invalid unary operation node");
+            bool isPositive = true;
+            while(node->getNodeType() == NodeType::UnaryOp) {
+                const UnaryOpNode* unNode = dynamic_cast<const UnaryOpNode*>(node);
+                if (!unNode) {
+                    throw std::runtime_error("Invalid unary operation node");
+                }
+                if (unNode->getToken().getType() == TokenType::MINUS) {
+                    isPositive = !isPositive;
+                }
+                node = unNode->getOperand();
             }
-            double operandVal = Evaluation::evaluate(unNode->getOperand());
-            Token opToken = unNode->getToken();
-            switch (opToken.getType()) {
-                case TokenType::PLUS: return operandVal;
-                case TokenType::MINUS: return -operandVal;
-                default:
-                    throw std::runtime_error("Unsupported unary operator");
-            }
+            
+            double operandVal = Evaluation::evaluate(node);
+            return isPositive ? operandVal : -operandVal;
         }
         default:
             throw std::runtime_error("Unknown node type");
@@ -81,6 +83,10 @@ void Evaluation::assignment(const ASTNode* node) {
     Evaluation::variables[varName] = value;
 }
 
+void Evaluation::unassignment(const std::string& variable) {
+    Evaluation::variables.erase(variable);
+}
+
 double Evaluation::evaluateExpression(double left, Token op, double right){
     switch(op.getType()){
         case TokenType::PLUS:
@@ -91,7 +97,7 @@ double Evaluation::evaluateExpression(double left, Token op, double right){
             return left * right;
         case TokenType::DIVIDE:
             if (right == 0) {
-                throw std::runtime_error("Division by zero");
+                throw std::runtime_error("Division by zero from evaluation expression");
             }
             return left / right;
         case TokenType::POWER:

@@ -203,7 +203,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         }
         visited.insert(eqStr);
 
-        // dbg(entry.equation->toString(), entry.vars, entry.numVariables, entry.distinctVariables);
+        dbg(entry.equation->toString(), entry.vars, entry.numVariables, entry.distinctVariables);
 
         // Did improve distinct variable count
         if (entry.distinctVariables < bestDistinctVars) {

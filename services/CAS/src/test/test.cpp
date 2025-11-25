@@ -258,20 +258,20 @@ void testIsolate(){
 }
 
 void testSolve(){
-    // std::vector<std::string> equations = {
-    //     "x + a = b * c",
-    //     "a = b + 2",
-    //     "c = 3",
-    //     "b = 4"
-    // };
     std::vector<std::string> equations = {
-        "a + b + c + d + e = 15",
-        "2a - b + c - d + e = 8",
-        "3a + 2b - c + d - e = 12",
-        "a - 2b + 3c + d + e = 10",
-        "2a + b + 2c - d + 3e = 20"
+        "x + a = b * c",
+        "a = b + 2",
+        "c = 3",
+        "b = 4"
     };
-    string variable = "a";
+    // std::vector<std::string> equations = {
+    //     "a + b + c + d + e = 15",
+    //     "2a - b + c - d + e = 8",
+    //     "3a + 2b - c + d - e = 12",
+    //     "a - 2b + 3c + d + e = 10",
+    //     "2a + b + 2c - d + 3e = 20"
+    // };
+    string variable = "x";
     // std::vector<std::string> equations = {
     //     "x + y = 3",
     //     "x - y = 1"
@@ -297,7 +297,7 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolate();
-    testSimplify();
+    // testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
@@ -310,6 +310,6 @@ int main (int argc, char *argv[]) {
     // testDistributeMultiplyBinary();
     // testSocketClient();
     
-    // testSolve();
+    testSolve();
     return 0;
 }

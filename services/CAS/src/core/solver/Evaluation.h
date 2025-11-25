@@ -14,6 +14,7 @@ public:
 
     double evaluate(const ASTNode* node);
     void assignment(const ASTNode* node);
+    void unassignment(const std::string& variable);
     
     static double evaluateExpression(Token left, Token op, Token right);
     static double evaluateExpression(double left, Token op, double right);

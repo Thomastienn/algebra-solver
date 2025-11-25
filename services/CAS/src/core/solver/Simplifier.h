@@ -64,9 +64,9 @@ protected:
         std::unique_ptr<ASTNode>& node, 
         bool negate = false
     );
-
 public:
-    Simplifier(){};
+    Simplifier() {};
 
     static bool simplify(std::unique_ptr<ASTNode>& node, bool debug=false, bool validate=false);
+    static Evaluation evaluator;
 };

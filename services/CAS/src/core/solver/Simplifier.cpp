@@ -2,6 +2,9 @@
 #include "../../utils/Debug.h"
 #include <cassert>
 
+// Define static member
+Evaluation Simplifier::evaluator;
+
 
 std::vector<flattenN> Simplifier::flattenNode(
     std::unique_ptr<ASTNode>& node, 
@@ -262,30 +265,25 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
 
         // Direct evaluation if both sides are numbers
         if (
-            left && right &&
-            left->getNodeType() == NodeType::Atom && right->getNodeType() == NodeType::Atom
+            left && right
         ) {
-            AtomNode *leftAtom = static_cast<AtomNode *>(left);
-            AtomNode *rightAtom = static_cast<AtomNode *>(right);
-            if (
-                leftAtom->getToken().getType() == TokenType::NUMBER && 
-                rightAtom->getToken().getType() == TokenType::NUMBER
-            ) {
-                // Both sides are numbers, perform the operation
-                double result = Evaluation::evaluateExpression(
-                    leftAtom->getToken(), 
-                    binaryNode->getToken(), 
-                    rightAtom->getToken()
-                );
+            try {
+                ASTNode* nodePtr = node.get();
+                double result = Simplifier::evaluator.evaluate(nodePtr);
                 if (result < 0){
                     node = std::make_unique<UnaryOpNode>(
                         Token(TokenType::MINUS, "-"), 
-                        std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(-result)))
+                        std::make_unique<AtomNode>(
+                            Token(TokenType::NUMBER, std::to_string(-result))
+                        )
                     );
                 } else {
-                    node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, std::to_string(result)));
+                    node = std::make_unique<AtomNode>(
+                        Token(TokenType::NUMBER, std::to_string(result))
+                    );
                 }
-                return true;
+            } catch (const std::exception &e) {
+                // Might not be constants so skip
             }
         }
 
@@ -451,11 +449,14 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                         // Binary divide by 0
                         else if (binaryNode->getToken() == TokenType::DIVIDE) {
                             if (isLeft) {
-                                // 0 / x -> 0
+                                // 0 / x → 0 (only if x is definitely not zero)
                                 node = std::make_unique<AtomNode>(Token(TokenType::NUMBER, "0"));
                                 return true;
                             } else {
-                                throw std::runtime_error("Division by zero");
+                                dbg(binaryNode->toString());
+                                // x / 0 → ERROR (but only if we're sure right side is exactly 0)
+                                // At this point we know target is an Atom with NUMBER type and value 0.0
+                                throw std::runtime_error("Division by zero from simplification");
                             }
                         }
                     // Deal with 1
@@ -468,8 +469,8 @@ bool Simplifier::evaluateSpecialCases(std::unique_ptr<ASTNode> &node) {
                                 std::move(binaryNode->getLeftRef());
                             return true;
                         // Divide by 1
-                        } else if (binaryNode->getToken() == TokenType::DIVIDE && isLeft) {
-                            // Division by one results in the numerator
+                        } else if (binaryNode->getToken() == TokenType::DIVIDE && !isLeft) {
+                            // x / 1 → x (Division by one results in the numerator)
                             node = std::move(binaryNode->getLeftRef());
                             return true;
                         }
