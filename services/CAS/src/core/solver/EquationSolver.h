@@ -12,12 +12,18 @@ struct EquationEntry {
     int numVariables;
     int distinctVariables;
 
+    // Mapping from variable to isolated equation
+    // Like if we already use b = 2 or something
+    // If we found b again in the equation, we MUST use this isolated equation
+    std::unordered_map<std::string, std::unique_ptr<ASTNode>> varToIsolatedEquation;
+
     EquationEntry(
         std::unique_ptr<ASTNode> eq,
         std::unordered_set<std::string> vars,
         int numVars,
-        int distinctVars
-    ) : equation(std::move(eq)), vars(vars), numVariables(numVars), distinctVariables(distinctVars) {}
+        int distinctVars,
+        std::unordered_map<std::string, std::unique_ptr<ASTNode>> varToIsolatedEquation = {}
+    ) : equation(std::move(eq)), vars(vars), numVariables(numVars), distinctVariables(distinctVars), varToIsolatedEquation(std::move(varToIsolatedEquation)) {}
 
     bool operator==(const EquationEntry &other) const {
         return this->equation->toString() == other.equation->toString();
@@ -37,7 +43,11 @@ struct EquationEntry {
     }
     
     EquationEntry clone() const {
-        return EquationEntry(this->equation->clone(), this->vars, this->numVariables, this->distinctVariables);
+        std::unordered_map<std::string, std::unique_ptr<ASTNode>> clonedMap;
+        for (const auto& [var, eq] : this->varToIsolatedEquation) {
+            clonedMap[var] = eq->clone();
+        }
+        return EquationEntry(this->equation->clone(), this->vars, this->numVariables, this->distinctVariables, std::move(clonedMap));
     }
 };
 

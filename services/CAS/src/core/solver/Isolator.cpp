@@ -41,7 +41,10 @@ bool Isolator::transferAdditives(std::unique_ptr<ASTNode>& lhs, std::unique_ptr<
                 return false;
             };
 
-            if (move(left, true, TokenType::PLUS) || move(right, false, opType)) {
+            if (
+                move(left, true, TokenType::PLUS) ||
+                move(right, false, opType)
+            ) {
                 return true;
             }
         }

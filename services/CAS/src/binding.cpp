@@ -4,6 +4,8 @@
 #include "core/solver/Isolator.h"
 #include "core/solver/EquationSolver.h"
 
+#define dbg(...) // Remove dbg statements in binding
+
 namespace py = pybind11;
 
 PYBIND11_MODULE(cas, m) {

@@ -76,7 +76,8 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "(x + (-1 + x)) - 3 = 0";
+    std::string expr = "(x + (-b - 2)) - (b * c) = 0";
+    // std::string expr = "a = -(-(0 - 40) / 2)";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -247,23 +248,23 @@ void testEvaluateSpecialCases(){
 }
 
 void testIsolate(){
-    std::string expr = "(x-y)-10 = 0";
+    std::string expr = "(x + a) - (b * c) = 0";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
     Tester x;
-    x.isolateVariable(root, "y", true);
+    x.isolateVariable(root, "b", true);
     std::cout << "Isolated: " << root->toString() << "\n";
 }
 
 void testSolve(){
-    // std::vector<std::string> equations = {
-    //     "x + a = b * c",
-    //     "a = b + 2",
-    //     "c = 3",
-    //     "b = 4"
-    // };
+    std::vector<std::string> equations = {
+        "x + a = b * c",
+        "a = b + 2",
+        "c = 3",
+        "b = 4"
+    };
     // std::vector<std::string> equations = {
     //     "a + b + c + d + e = 15",
     //     "2a - b + c - d + e = 8",
@@ -272,10 +273,10 @@ void testSolve(){
     //     "2a + b + 2c - d + 3e = 20"
     // };
     string variable = "x";
-    std::vector<std::string> equations = {
-        "x + y = 3",
-        "x - y = 1"
-    };
+    // std::vector<std::string> equations = {
+    //     "x + y = 3",
+    //     "x - y = 1"
+    // };
     std::vector<std::unique_ptr<ASTNode>> parsedEquations;
     for (const auto &eq : equations) {
         std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(eq);
@@ -285,7 +286,7 @@ void testSolve(){
     Tester solver;
     auto solution = solver.solve(parsedEquations, variable);
     if (solution) {
-        std::cout << "Solution for x: " << solution->toString() << "\n";
+        std::cout << "Solution for " << variable << ": " << solution->toString() << "\n";
     } else {
         std::cout << "No solution found for x.\n";
     }
@@ -297,7 +298,7 @@ int main (int argc, char *argv[]) {
 
     // testIsIsolateSide();
     // testIsolate();
-    testSimplify();
+    // testSimplify();
     // testFlatten();
     // testNormalize();
     // testFlattenNode();
@@ -310,6 +311,6 @@ int main (int argc, char *argv[]) {
     // testDistributeMultiplyBinary();
     // testSocketClient();
     
-    // testSolve();
+    testSolve();
     return 0;
 }
