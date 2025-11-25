@@ -76,7 +76,8 @@ void testEvaluation() {
 }
 
 void testSimplify() {
-    std::string expr = "a = -(-(0 - 40) / 2)";
+    std::string expr = "(x + (-b - 2)) - (b * c) = 0";
+    // std::string expr = "a = -(-(0 - 40) / 2)";
     // std::string expr = "-(3 + -(-2)) + +4 - -(-1)";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
@@ -247,13 +248,13 @@ void testEvaluateSpecialCases(){
 }
 
 void testIsolate(){
-    std::string expr = "(x-y)-10 = 0";
+    std::string expr = "(x + a) - (b * c) = 0";
     std::unique_ptr<Lexer> lexer = std::make_unique<Lexer>(expr);
     Parser parser(std::move(lexer));
     std::unique_ptr<ASTNode> root = parser.parse();
     std::cout << "Original: " << root->toString() << "\n";
     Tester x;
-    x.isolateVariable(root, "y", true);
+    x.isolateVariable(root, "b", true);
     std::cout << "Isolated: " << root->toString() << "\n";
 }
 

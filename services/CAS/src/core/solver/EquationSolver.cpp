@@ -203,7 +203,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         }
         visited.insert(eqStr);
 
-        dbg(entry.equation->toString(), entry.vars, entry.numVariables, entry.distinctVariables);
+        // dbg(entry.equation->toString(), entry.vars, entry.numVariables, entry.distinctVariables);
 
         // Did improve distinct variable count
         if (entry.distinctVariables < bestDistinctVars) {
@@ -327,6 +327,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 EquationEntry newEntry = entry.clone();
 
                 std::unique_ptr<ASTNode> isolated = relatedEq.equation->clone();
+                // dbg("Isolating", var, "from", isolated->toString());
                 this->isolator.isolateVariable(isolated, var);
                 // dbg("Isolated:", isolated->toString());
                 this->simplifier.simplify(isolated);
@@ -334,6 +335,11 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
                 if (isolated->getNodeType() != NodeType::BinaryOp) {
                     throw std::runtime_error("Isolated equation is not a binary operation");
+                }
+                if (static_cast<BinaryOpNode *>(isolated.get())->getLeft()->toString() != var) {
+                    // dbg(isolated->toString());
+                    // throw std::runtime_error("Isolated equation left side is not the variable");
+                    continue;
                 }
                 BinaryOpNode* assignNode = static_cast<BinaryOpNode *>(isolated.get());
 
@@ -362,6 +368,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 newEntry.varToIsolatedEquation[var] = isolated->clone();
                 
                 // dbg(newEntry.equation->toString(), newEntry.numVariables);
+                // dbg("-----------------------------------------------");
                 queue.push(std::move(newEntry));
             }
         }

@@ -12,11 +12,11 @@ bool Isolator::transferAdditives(std::unique_ptr<ASTNode>& lhs, std::unique_ptr<
             // Move x + 3 = 0 -> x = 0 - 3
             // Move x - y = 0 -> x = 0 + y
 
-            auto move = [&](std::unique_ptr<ASTNode>& side, std::unique_ptr<ASTNode>& otherSide, bool isLeft, TokenType localOpType) -> bool {
-                // Only move if this side doesn't have variable AND other side does
-                if (!ASTUtils::containsVariable(side, variable) && 
-                    ASTUtils::containsVariable(otherSide, variable)) {
-                    
+            auto move = [&](std::unique_ptr<ASTNode>& side, bool isLeft, TokenType localOpType) -> bool {
+                if (
+                    !ASTUtils::containsVariable(side, variable)
+                ) {
+                    AtomNode *numNode = static_cast<AtomNode *>(side.get());
                     TokenType inverseOp = Token::getInverseOperation(localOpType);
                     rhs = std::make_unique<BinaryOpNode>( 
                         Token(
@@ -26,13 +26,25 @@ bool Isolator::transferAdditives(std::unique_ptr<ASTNode>& lhs, std::unique_ptr<
                         std::move(rhs), 
                         std::move(side)
                     );
-                    lhs = std::move(otherSide);
+                    lhs = std::move(
+                        isLeft ? 
+                        std::make_unique<UnaryOpNode>(
+                            Token(opType, std::string(1, Token::operationToChr(opType))), 
+                            std::move(
+                                binOpNode->getRightRef()
+                            )
+                        )
+                        : std::move(binOpNode->getLeftRef())
+                    );
                     return true;
                 }
                 return false;
             };
 
-            if (move(left, right, true, TokenType::PLUS) || move(right, left, false, opType)) {
+            if (
+                move(left, true, TokenType::PLUS) ||
+                move(right, false, opType)
+            ) {
                 return true;
             }
         }
@@ -53,11 +65,11 @@ bool Isolator::transferMultiplicatives(std::unique_ptr<ASTNode>& lhs, std::uniqu
             // Move 2*x = 0 -> x = 0 / 2
             // Move x/3 = 0 -> x = 0 * 3
 
-            auto move = [&](std::unique_ptr<ASTNode>& side, std::unique_ptr<ASTNode>& otherSide, bool isLeft) -> bool {
-                // Only move if this side doesn't have variable AND other side does
-                if (!ASTUtils::containsVariable(side, variable) &&
-                    ASTUtils::containsVariable(otherSide, variable)) {
-                    
+            auto move = [&](std::unique_ptr<ASTNode>& side, bool isLeft) -> bool {
+                if (
+                    !ASTUtils::containsVariable(side, variable)
+                ) {
+                    AtomNode *numNode = static_cast<AtomNode *>(side.get());
                     TokenType inverseOp = Token::getInverseOperation(opType);
                     rhs = std::make_unique<BinaryOpNode>( 
                         Token(
@@ -67,13 +79,15 @@ bool Isolator::transferMultiplicatives(std::unique_ptr<ASTNode>& lhs, std::uniqu
                         std::move(rhs), 
                         std::move(side)
                     );
-                    lhs = std::move(otherSide);
+                    lhs = std::move(
+                        isLeft ? binOpNode->getRightRef() : binOpNode->getLeftRef()
+                    );
                     return true;
                 }
                 return false;
             };
 
-            if (move(left, right, true) || move(right, left, false)) {
+            if (move(left, true) || move(right, false)) {
                 return true;
             }
         }
