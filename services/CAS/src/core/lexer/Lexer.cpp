@@ -66,7 +66,10 @@ void Lexer::skipWhitespace() {
 
 Token Lexer::number() {
     std::string result;
-    while (currentChar != '\0' && std::isdigit(currentChar)) {
+    while (
+        currentChar != '\0' && 
+        (std::isdigit(currentChar) || currentChar == '.') // Support decimal numbers
+    ) {
         result += currentChar;
         advance();
     }

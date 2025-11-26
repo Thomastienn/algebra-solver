@@ -21,7 +21,6 @@ enum TokenType {
     DIVIDE,
     MODULO,
     POWER,
-    SQRT,
 };
 
 
