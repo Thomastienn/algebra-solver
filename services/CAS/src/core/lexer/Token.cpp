@@ -13,7 +13,6 @@ std::ostream& operator<<(std::ostream& os, const Token& token) {
         case DIVIDE: os << "DIVIDE"; break;
         case MODULO: os << "MODULO"; break;
         case POWER: os << "POWER"; break;
-        case SQRT: os << "SQRT"; break;
         case END: os << "END"; break;
         case UNKNOWN: os << "UNKNOWN"; break;
         default: throw std::runtime_error("Token doesn't supported"); break;
@@ -31,7 +30,6 @@ char Token::operationToChr(const TokenType& op) {
         case DIVIDE: return '/';
         case MODULO: return '%';
         case POWER: return '^';
-        case SQRT: return 'v';
         case UNKNOWN: return '?';
         default: throw std::runtime_error("Token doesn't supported");
     }
@@ -46,7 +44,6 @@ TokenType Token::chrToOperation(const char& op) {
         case '/': return DIVIDE;
         case '%': return MODULO;
         case '^': return POWER;
-        case 'v': return SQRT;
         default: return UNKNOWN;
     }
 }
@@ -63,7 +60,6 @@ bool Token::isOperation(const TokenType& type) {
         case DIVIDE:
         case MODULO:
         case POWER:
-        case SQRT:
             return true;
         default:
             return false;
@@ -98,7 +94,6 @@ std::tuple<float, float> Token::getBindingPower(const TokenType& type) {
         case DIVIDE: return {3, 3.1};
         case MODULO: return {3, 3.1};
         case POWER: return {4.1, 4}; // Right associative
-        case SQRT: return {5, 5.1}; // Unary operator
         default: throw std::runtime_error("Token doesn't supported");
     }
 }
