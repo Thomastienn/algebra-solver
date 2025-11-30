@@ -37,7 +37,7 @@ function App() {
 
   useEffect(() => {
     // Warm up the backend server
-    fetch('http://localhost:8000/')
+    fetch('https://algebra-solver.onrender.com/')
   }, []);
 
   const handleSimplify = async () => {
@@ -47,7 +47,7 @@ function App() {
 
     try {
       const response = await fetch(
-        'http://localhost:8000/simplify',
+        'https://algebra-solver.onrender.com/simplify',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -135,7 +135,7 @@ function App() {
       }
 
       const response = await fetch(
-        'http://localhost:8000/solve-system',
+        'https://algebra-solver.onrender.com/solve-system',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
