@@ -136,7 +136,7 @@ std::unordered_set<std::string> EquationSolver::dependencies(const std::string &
 
 // TODO: This current approach is brute forcing with heuristic paths
 // We will implement further optimizations like Gauss elimination later
-std::unique_ptr<ASTNode> EquationSolver::solve(
+SolveResult EquationSolver::solve(
     std::vector<std::unique_ptr<ASTNode>>& equations,
     const std::string &variable
 ) {
@@ -154,6 +154,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
         bool containsVar = ASTUtils::containsVariable(normalized, variable);
         EquationEntry entry(std::move(normalized), vars, numVars, distinctVars);
+        entry.steps.push_back("Start: " + entry.equation->toString());
 
         // Build graph connections
         // Eq 1: a = b + c (variables: a,b,c)
@@ -191,7 +192,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
         iterations++;
         if (iterations > Config::MAX_ITERATIONS_CONVERGE_SOLVE) {
             std::cerr << "Max iterations reached in EquationSolver::solve" << std::endl;
-            return nullptr;
+            return {nullptr, {}};
         }
         EquationEntry entry = queue.top().clone();
         queue.pop();
@@ -217,7 +218,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 if (iterationsSinceImprovement > Config::MAX_ITERATIONS_WITHOUT_IMPROVEMENT) {
                     std::cerr << "Stuck at " << bestDistinctVars << " variables after " 
                               << Config::MAX_ITERATIONS_WITHOUT_IMPROVEMENT << " iterations without improvement" << std::endl;
-                    return nullptr;
+                    return {nullptr, {}};
                 }
             }
         }
@@ -230,7 +231,8 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
             // dbg("Isolated", isolated->toString());
             this->simplifier.simplify(isolated);
             // dbg("Simplify", isolated->toString());
-            return isolated;
+            entry.steps.push_back("Solved: " + isolated->toString());
+            return {std::move(isolated), entry.steps};
         }
         
         // If we have a 1-variable equation but it's not our target:
@@ -305,6 +307,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 std::unique_ptr<ASTNode> substitution = entry.varToIsolatedEquation.at(var)->clone();
                 EquationSolver::subsituteVariable(entry.equation, var, std::move(substitution));
                 this->simplifier.simplify(entry.equation);
+                entry.steps.push_back("Substitute " + var + ": " + entry.equation->toString());
                 entry.numVariables = ASTUtils::countVariableOccurrences(entry.equation);
                 entry.distinctVariables = ASTUtils::countDistinctVariables(entry.equation);
                 entry.vars = EquationSolver::extractVariables(entry.equation);
@@ -346,6 +349,7 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
                 EquationSolver::subsituteVariable(newEntry.equation, var, assignNode->getRightRef()->clone());
                 // dbg("After substitution:", newEntry.equation->toString());
                 this->simplifier.simplify(newEntry.equation);
+                newEntry.steps.push_back("Substitute " + var + ": " + newEntry.equation->toString());
                 // dbg("After simplification:", newEntry.equation->toString());
 
                 int newNumVariables = ASTUtils::countVariableOccurrences(newEntry.equation);
@@ -375,5 +379,5 @@ std::unique_ptr<ASTNode> EquationSolver::solve(
 
     }
 
-    return nullptr;
+    return {nullptr, {}};
 }

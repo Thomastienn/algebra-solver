@@ -37,12 +37,16 @@ PYBIND11_MODULE(cas, m) {
             astEquations.push_back(parser.parse());
         }
         EquationSolver solver;
-        std::unique_ptr<ASTNode> result = solver.solve(astEquations, variable);
-        if (result) {
-            return result->toString();
+        SolveResult solution = solver.solve(astEquations, variable);
+        
+        py::dict result;
+        if (solution.result) {
+            result["result"] = solution.result->toString();
         } else {
-            return std::string("");
+            result["result"] = "";
         }
+        result["steps"] = solution.steps;
+        return result;
     }, "Solve a system of equations for a specific variable");
 }
 

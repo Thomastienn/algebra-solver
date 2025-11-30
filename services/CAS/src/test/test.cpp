@@ -285,8 +285,12 @@ void testSolve(){
     }
     Tester solver;
     auto solution = solver.solve(parsedEquations, variable);
-    if (solution) {
-        std::cout << "Solution for " << variable << ": " << solution->toString() << "\n";
+    if (solution.result) {
+        std::cout << "Solution for " << variable << ": " << solution.result->toString() << "\n";
+        std::cout << "Steps:\n";
+        for (const auto& step : solution.steps) {
+            std::cout << "- " << step << "\n";
+        }
     } else {
         std::cout << "No solution found for x.\n";
     }
