@@ -3,7 +3,7 @@ import asyncio
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from .structures import (
+from structures import (
     SimplifyRequest, 
     SimplifyResponse,
     SystemSolveRequest,
