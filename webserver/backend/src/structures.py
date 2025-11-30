@@ -13,3 +13,4 @@ class SystemSolveRequest(BaseModel):
 
 class SystemSolveResponse(BaseModel):
     result: str
+    steps: List[str] = []

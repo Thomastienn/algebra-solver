@@ -13,17 +13,19 @@ struct EquationEntry {
     int distinctVariables;
 
     // Mapping from variable to isolated equation
-    // Like if we already use b = 2 or something
-    // If we found b again in the equation, we MUST use this isolated equation
     std::unordered_map<std::string, std::unique_ptr<ASTNode>> varToIsolatedEquation;
+
+    // Steps taken to reach this equation
+    std::vector<std::string> steps;
 
     EquationEntry(
         std::unique_ptr<ASTNode> eq,
         std::unordered_set<std::string> vars,
         int numVars,
         int distinctVars,
-        std::unordered_map<std::string, std::unique_ptr<ASTNode>> varToIsolatedEquation = {}
-    ) : equation(std::move(eq)), vars(vars), numVariables(numVars), distinctVariables(distinctVars), varToIsolatedEquation(std::move(varToIsolatedEquation)) {}
+        std::unordered_map<std::string, std::unique_ptr<ASTNode>> varToIsolatedEquation = {},
+        std::vector<std::string> steps = {}
+    ) : equation(std::move(eq)), vars(vars), numVariables(numVars), distinctVariables(distinctVars), varToIsolatedEquation(std::move(varToIsolatedEquation)), steps(steps) {}
 
     bool operator==(const EquationEntry &other) const {
         return this->equation->toString() == other.equation->toString();
@@ -47,8 +49,13 @@ struct EquationEntry {
         for (const auto& [var, eq] : this->varToIsolatedEquation) {
             clonedMap[var] = eq->clone();
         }
-        return EquationEntry(this->equation->clone(), this->vars, this->numVariables, this->distinctVariables, std::move(clonedMap));
+        return EquationEntry(this->equation->clone(), this->vars, this->numVariables, this->distinctVariables, std::move(clonedMap), this->steps);
     }
+};
+
+struct SolveResult {
+    std::unique_ptr<ASTNode> result;
+    std::vector<std::string> steps;
 };
 
 class EquationSolver {
@@ -98,7 +105,7 @@ public:
     *   b = 4
     *   solve(x) -> 12
     */
-    std::unique_ptr<ASTNode> solve(
+    SolveResult solve(
         std::vector<std::unique_ptr<ASTNode>>& equations,
         const std::string &variable
     );

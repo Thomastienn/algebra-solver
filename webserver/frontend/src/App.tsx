@@ -14,6 +14,7 @@ interface SystemSolveRequest {
 }
 interface SystemSolveResponse {
   result: string;
+  steps: string[];
 }
 
 function App() {
@@ -29,23 +30,24 @@ function App() {
   const [systemInput, setSystemInput] = useState('');
   const [systemVariable, setSystemVariable] = useState('x');
   const [systemResult, setSystemResult] = useState('');
+  const [systemSteps, setSystemSteps] = useState<string[]>([]);
   const [systemError, setSystemError] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // Warm up the backend server
-    fetch('https://algebra-solver.onrender.com/')
+    fetch('http://localhost:8000/')
   }, []);
 
   const handleSimplify = async () => {
     setIsLoading(true);
     setSimplifyError('');
     setSimplifyResult('');
-    
+
     try {
       const response = await fetch(
-        'https://algebra-solver.onrender.com/simplify',
+        'http://localhost:8000/simplify',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -54,11 +56,11 @@ function App() {
           } as SimplifyRequest),
         },
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data: SimplifyResponse = await response.json();
       setSimplifyResult(`Simplified: ${data.simplified}`);
     } catch (error) {
@@ -72,7 +74,7 @@ function App() {
     setIsLoading(true);
     setEvaluateError('');
     setEvaluateResult('');
-    
+
     try {
       // TODO: Call backend API when endpoint is available
       // For now, simulate a delay and show placeholder result
@@ -96,20 +98,20 @@ function App() {
     setIsLoading(true);
     setSystemError('');
     setSystemResult('');
-    
+
     try {
       const equations = parseEquations(systemInput);
-      
+
       if (equations.length === 0) {
         throw new Error('Please enter at least one equation');
       }
-      
+
       if (!systemVariable.trim()) {
         throw new Error('Please specify a variable to solve for');
       }
-      
+
       const response = await fetch(
-        'https://algebra-solver.onrender.com/solve-system',
+        'http://localhost:8000/solve-system',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -119,13 +121,14 @@ function App() {
           } as SystemSolveRequest),
         },
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data: SystemSolveResponse = await response.json();
       setSystemResult(data.result);
+      setSystemSteps(data.steps || []);
     } catch (error) {
       setSystemError(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
     } finally {
@@ -234,6 +237,21 @@ b = 4`}
                 <div className="result-content">
                   {systemResult}
                 </div>
+                {systemSteps.length > 0 && (
+                  <div className="steps-container">
+                    <h4>Steps:</h4>
+                    <ol className="steps-list">
+                      {systemSteps.map((step, index) => (
+                        <li key={index} className="step-item" style={{ animationDelay: `${index * 0.1}s` }}>
+                          <div className="step-marker"></div>
+                          <div className="step-content">
+                            {step}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -323,8 +341,8 @@ b = 3
                   </li>
                 </ul>
               </div>
-              <button 
-                onClick={handleEvaluate} 
+              <button
+                onClick={handleEvaluate}
                 className={`button ${isLoading ? 'loading' : ''}`}
                 disabled={isLoading}
               >

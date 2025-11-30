@@ -3,7 +3,7 @@ import asyncio
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from structures import (
+from .structures import (
     SimplifyRequest, 
     SimplifyResponse,
     SystemSolveRequest,
@@ -43,13 +43,16 @@ def simplify(req: SimplifyRequest) -> SimplifyResponse:
 @app.post("/solve-system")
 def solve_system(req: SystemSolveRequest) -> SystemSolveResponse:
     try:
-        result = cas.solve(req.equations, req.variable)
-        if result and result.strip():
-            return SystemSolveResponse(result=result)
+        response_dict = cas.solve(req.equations, req.variable)
+        result_str = response_dict.get("result", "")
+        steps = response_dict.get("steps", [])
+        
+        if result_str and result_str.strip():
+            return SystemSolveResponse(result=result_str, steps=steps)
         else:
-            return SystemSolveResponse(result="No solution found or system is inconsistent.")
+            return SystemSolveResponse(result="No solution found or system is inconsistent.", steps=steps)
     except Exception as e:
-        return SystemSolveResponse(result=f"Error: {str(e)}")
+        return SystemSolveResponse(result=f"Error: {str(e)}", steps=[])
 
 @app.get("/")
 def root():
