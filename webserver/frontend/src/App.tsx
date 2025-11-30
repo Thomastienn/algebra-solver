@@ -94,6 +94,30 @@ function App() {
       .filter(line => line.length > 0);
   };
 
+  const cleanParentheses = (equation: string): string => {
+    // Remove outermost parentheses if they wrap the entire equation
+    let cleaned = equation.trim();
+    while (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      // Check if the parentheses are matching and wrap the whole string
+      let depth = 0;
+      let wrapsWhole = true;
+      for (let i = 0; i < cleaned.length - 1; i++) {
+        if (cleaned[i] === '(') depth++;
+        else if (cleaned[i] === ')') depth--;
+        if (depth === 0) {
+          wrapsWhole = false;
+          break;
+        }
+      }
+      if (wrapsWhole) {
+        cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+      } else {
+        break;
+      }
+    }
+    return cleaned;
+  };
+
   const handleSystemSolve = async () => {
     setIsLoading(true);
     setSystemError('');
@@ -235,7 +259,7 @@ b = 4`}
               <div className="result">
                 <h3>Result:</h3>
                 <div className="result-content">
-                  {systemResult}
+                  {cleanParentheses(systemResult)}
                 </div>
                 {systemSteps.length > 0 && (
                   <div className="steps-container">
@@ -245,7 +269,7 @@ b = 4`}
                         <li key={index} className="step-item" style={{ animationDelay: `${index * 0.1}s` }}>
                           <div className="step-marker"></div>
                           <div className="step-content">
-                            {step}
+                            {cleanParentheses(step)}
                           </div>
                         </li>
                       ))}

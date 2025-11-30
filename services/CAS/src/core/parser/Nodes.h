@@ -1,6 +1,9 @@
 #pragma once
 #include "../lexer/Token.h"
 #include <memory>
+#include <sstream>
+#include <iomanip>
+#include <cmath>
 
 enum class NodeType {
     Atom,
@@ -45,6 +48,18 @@ public:
     }
 
     std::string toString() override {
+        if (getToken().getType() == NUMBER) {
+            double value = Token::getNumericValue(getToken());
+            // Check if the value is a whole number
+            if (value == std::floor(value)) {
+                return std::to_string(static_cast<long long>(value));
+            } else {
+                // Format with 3 decimal places
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(3) << value;
+                return oss.str();
+            }
+        }
         return getToken().getValue();
     }
 
