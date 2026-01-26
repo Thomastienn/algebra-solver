@@ -8,6 +8,30 @@
 
 namespace py = pybind11;
 
+// Strip unnecessary outer parentheses from expression string
+std::string cleanOutput(const std::string& str) {
+    std::string result = str;
+    while (result.size() >= 2 && result.front() == '(' && result.back() == ')') {
+        // Check if these parens actually wrap the whole expression
+        int depth = 0;
+        bool wrapsWhole = true;
+        for (size_t i = 0; i < result.size() - 1; i++) {
+            if (result[i] == '(') depth++;
+            else if (result[i] == ')') depth--;
+            if (depth == 0) {
+                wrapsWhole = false;
+                break;
+            }
+        }
+        if (wrapsWhole) {
+            result = result.substr(1, result.size() - 2);
+        } else {
+            break;
+        }
+    }
+    return result;
+}
+
 PYBIND11_MODULE(cas, m) {
     m.doc() = "Computer Algebra System (CAS) module";
     m.def("simplify", [](const std::string &expr) {
@@ -15,7 +39,7 @@ PYBIND11_MODULE(cas, m) {
         Parser parser(std::move(lexer));
         std::unique_ptr<ASTNode> root = parser.parse();
         Simplifier::simplify(root);
-        return root->toString();
+        return cleanOutput(root->toString());
     }, "Simplify a mathematical expression");
 
     m.def("isolate", [](const std::string &equation, const std::string &variable) {
@@ -26,7 +50,7 @@ PYBIND11_MODULE(cas, m) {
             throw std::runtime_error("Input is not a valid equation");
         }
         Isolator::isolateVariable(root, variable, false);
-        return root->toString();
+        return cleanOutput(root->toString());
     }, "Isolate a variable in an equation");
 
     m.def("solve", [](const std::vector<std::string> &equations, const std::string &variable) {
@@ -41,11 +65,24 @@ PYBIND11_MODULE(cas, m) {
         
         py::dict result;
         if (solution.result) {
-            result["result"] = solution.result->toString();
+            result["result"] = cleanOutput(solution.result->toString());
         } else {
             result["result"] = "";
         }
-        result["steps"] = solution.steps;
+        
+        // Clean steps too (format is "Prefix: equation")
+        std::vector<std::string> cleanedSteps;
+        for (const auto& step : solution.steps) {
+            size_t colonPos = step.find(": ");
+            if (colonPos != std::string::npos) {
+                std::string prefix = step.substr(0, colonPos + 2);
+                std::string equation = step.substr(colonPos + 2);
+                cleanedSteps.push_back(prefix + cleanOutput(equation));
+            } else {
+                cleanedSteps.push_back(cleanOutput(step));
+            }
+        }
+        result["steps"] = cleanedSteps;
         return result;
     }, "Solve a system of equations for a specific variable");
 }
