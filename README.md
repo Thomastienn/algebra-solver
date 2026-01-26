@@ -5,7 +5,7 @@ A symbolic algebra system built from scratch in C++ with a web interface. Solves
 ## Demo
 https://github.com/user-attachments/assets/2a35d166-8d44-41b3-bcdd-aca5284be082
 
-**Live:** [algebra-solver.onrender.com](https://algebra-solver.onrender.com)
+**Live:** [algebra-solver-nine.vercel.app](https://algebra-solver-nine.vercel.app/)
 
 ## Features
 
