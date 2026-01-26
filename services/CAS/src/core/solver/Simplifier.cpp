@@ -282,6 +282,9 @@ bool Simplifier::evaluateConstantBinary(std::unique_ptr<ASTNode> &node) {
                         Token(TokenType::NUMBER, std::to_string(result))
                     );
                 }
+                // Node was replaced, binaryNode/left/right are now dangling pointers
+                // Return early to avoid use-after-free
+                return true;
             } catch (const std::exception &e) {
                 // Might not be constants so skip
             }
