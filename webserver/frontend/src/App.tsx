@@ -34,10 +34,26 @@ function App() {
   const [systemError, setSystemError] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
+  const [backendReady, setBackendReady] = useState(false);
+  const [warmupMessage, setWarmupMessage] = useState('Waking up backend server...');
 
   useEffect(() => {
-    // Warm up the backend server
-    fetch('https://algebra-solver.onrender.com/')
+    // Warm up the backend server with feedback
+    const warmupBackend = async () => {
+      const startTime = Date.now();
+      try {
+        const response = await fetch('https://algebra-solver.onrender.com/');
+        if (response.ok) {
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          setBackendReady(true);
+          setWarmupMessage(`Backend ready! (${elapsed}s)`);
+        }
+      } catch (error) {
+        console.error('Backend warmup failed:', error);
+        setWarmupMessage('Backend warmup failed. First request may be slow.');
+      }
+    };
+    warmupBackend();
   }, []);
 
   const handleSimplify = async () => {
@@ -147,6 +163,13 @@ function App() {
         <h1>Algebra Solver</h1>
         <p>Simplify equations and evaluate expressions</p>
       </header>
+
+      {!backendReady && (
+        <div className={`warmup-bar ${backendReady ? 'ready' : 'loading'}`}>
+          <span className="warmup-spinner"></span>
+          {warmupMessage}
+        </div>
+      )}
 
       <div className="tabs">
         <button
