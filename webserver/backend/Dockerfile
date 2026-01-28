@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     cmake \
     make \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pybind11 for C++ binding headers
@@ -45,8 +46,9 @@ COPY --from=deps /usr/local/bin /usr/local/bin
 # Copy backend source
 COPY webserver/backend/src/ .
 
-# Add build directory to PYTHONPATH so Python can import cas
-ENV PYTHONPATH=/app/build:$PYTHONPATH
+# Add build directory to PYTHONPATH and LD_LIBRARY_PATH
+ENV PYTHONPATH=/app/build
+ENV LD_LIBRARY_PATH=/app/build
 
 # Pre-compile Python bytecode for faster startup
 RUN python -m compileall -q .

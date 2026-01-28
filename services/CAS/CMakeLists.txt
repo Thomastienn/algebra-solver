@@ -6,12 +6,20 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -fsanitize=address -fno-omit-frame-pointer")
 endif()
 
-include(FetchContent)
-FetchContent_Declare(
-  pybind11
-  GIT_REPOSITORY https://github.com/pybind/pybind11.git
-)
-FetchContent_MakeAvailable(pybind11)
+# Find pybind11 - prefer pip-installed version, fallback to FetchContent
+find_package(pybind11 QUIET)
+if(NOT pybind11_FOUND)
+    message(STATUS "pybind11 not found via find_package, using FetchContent")
+    include(FetchContent)
+    FetchContent_Declare(
+      pybind11
+      GIT_REPOSITORY https://github.com/pybind/pybind11.git
+      GIT_TAG v2.11.1
+    )
+    FetchContent_MakeAvailable(pybind11)
+else()
+    message(STATUS "Found pybind11 via find_package")
+endif()
 
 # shared core library
 add_library(algebra_core SHARED
@@ -28,6 +36,10 @@ add_library(algebra_core SHARED
     src/utils/ASTUtils.cpp
 )
 target_include_directories(algebra_core PUBLIC ${CMAKE_SOURCE_DIR}/src)
+
+# Set RPATH for the shared library to be found at runtime
+set(CMAKE_INSTALL_RPATH "$ORIGIN")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 # executables link to core
 add_executable(AlgebraSolver src/main.cpp)

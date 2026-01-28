@@ -3,6 +3,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 
 enum TokenType {
     // Atoms
